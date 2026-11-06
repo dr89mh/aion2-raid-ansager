@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>RaidAnsager</AssemblyName>
+    <RootNamespace>RaidAnsager</RootNamespace>
+    <Version>0.1.0</Version>
+    <Product>Raid-Ansager</Product>
+    <AssemblyTitle>Raid-Ansager für Aion 2</AssemblyTitle>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>assets\ansager.ico</ApplicationIcon>
+    <!-- The Cube Radar submodule and the publish output are not sources of this project. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);external\**;dist\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Keep WinForms names (Timer, Orientation, ...) out of the global namespace; UI files import them explicitly. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Capture, TCP reassembly and framing come from the Cube Radar core (git submodule, same author, GPL-3.0). -->
+    <ProjectReference Include="external\aion2-cube-radar\src\CubeRadar.Core\CubeRadar.Core.csproj" />
+    <PackageReference Include="System.Speech" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="mods\*.json" LogicalName="mods/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="data\*.json" LogicalName="data/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

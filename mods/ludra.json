@@ -1,0 +1,165 @@
+{
+  // Raid-Ansager Boss-Mod: Weihestätte des Ewigen Ludra (Aion 2 Global, Raid-Zone 600082)
+  // Stand 2026-11-06, VOR dem ersten eigenen Mitschnitt:
+  //  - Boss-NPC-Codes stammen aus den Spieldaten (sicher).
+  //  - HP-Schwellen stammen aus Guides zur Early-Access-/KR-Version (NC hat die Mechaniken zur Rückkehr
+  //    am 04.11.26 überarbeitet, also unsicher).
+  //  - Skill-Codes 1803000–1803040 sind Ludra-Fähigkeiten laut Spieldaten, die Zuordnung zur Mechanik ist geraten
+  //    ("verified": false). Alles andere sagt der Lernmodus mit dem Spielnamen der Fähigkeit an.
+  // Nach dem ersten Raid: "RaidAnsager analyse <mitschnitt.pcapng>" ausführen und diese Datei aus dem Entwurf ergänzen.
+  "id": "ludra",
+  "name": "Weihestätte: Ewiger Ludra",
+  "version": "2026-11-06",
+  "zones": [600082],
+  "notes": "Rahu und Ketu laufen laut Guides parallel (zwei Fünfergruppen), Ludra danach mit allen.",
+  "bosses": [
+    {
+      "id": "rahu",
+      "name": "Rahu der Isolation",
+      "npc": [2301006],
+      "triggers": [
+        {
+          "name": "Pull",
+          "on": "pull",
+          "say": "Rahu. Purpurkreis immer weitergeben, drei Pfützen sind ein Wipe",
+          "show": "RAHU – Purpurkreis weitergeben!",
+          "sound": "info"
+        },
+        {
+          "name": "Arena-Teilung (~50 %)",
+          "on": "hp",
+          "below": 52,
+          "say": "Gleich Arena-Teilung. Zusammen in den richtigen Abschnitt",
+          "show": "ARENA-TEILUNG – zusammen bleiben",
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guide (timesaver.gg): Teilung bei etwa der Hälfte"
+        }
+      ]
+    },
+    {
+      "id": "ketu",
+      "name": "Abgrundsflügel Ketu",
+      "npc": [2301007],
+      "triggers": [
+        {
+          "name": "Pull",
+          "on": "pull",
+          "say": "Ketu. Seelensteine nicht zerstören, für die Heiler aufheben",
+          "show": "KETU – Seelensteine aufheben",
+          "sound": "info"
+        },
+        {
+          "name": "Blick-Phase (~50 %)",
+          "on": "hp",
+          "below": 52,
+          "say": "Blick-Phase. Rotes Auge anschauen, blaues Auge wegdrehen",
+          "show": "ROT ANSCHAUEN – BLAU WEGDREHEN",
+          "color": "#FF7070",
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guide (expcarry.com): Rot/Blau-Blick ab etwa 50 %"
+        }
+      ]
+    },
+    {
+      "id": "ludra",
+      "name": "Ludra der Ewigkeit",
+      "npc": [2301014, 2090719],
+      "resetAfter": 60,
+      "triggers": [
+        {
+          "name": "Pull",
+          "on": "pull",
+          "say": "Ludra. Rote Kugel nur mit Block oder Unverwundbarkeit",
+          "show": "LUDRA – Rote Kugel: Block/Unverwundbar",
+          "sound": "info"
+        },
+        {
+          "name": "Bingo 1 (~50 %)",
+          "on": "hp",
+          "below": 53,
+          "say": "Gleich Bingo. Sicheres Feld suchen und ansagen",
+          "show": "BINGO – sicheres Feld suchen",
+          "color": "#FFB000",
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guides: erstes Bingo bei etwa 50 %"
+        },
+        {
+          "name": "Rot/Blau (~35 %)",
+          "on": "hp",
+          "below": 37,
+          "say": "Rot und Blau getrennt halten",
+          "show": "ROT / BLAU TRENNEN",
+          "color": "#FF7070",
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guide (timesaver.gg): Rot/Blau-Verbindungen ab 35 %"
+        },
+        {
+          "name": "Bingo 2 (~25 %)",
+          "on": "hp",
+          "below": 28,
+          "say": "Gleich zweites Bingo",
+          "show": "BINGO 2 – sicheres Feld suchen",
+          "color": "#FFB000",
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guides: zweites Bingo bei etwa 25 %"
+        },
+        {
+          "name": "Donnerzone",
+          "on": "cast",
+          "skill": [1803030],
+          "say": "Donnerzone. Kreis in deiner Farbe, erst spät rein",
+          "show": "DONNERZONE – eigene Farbe, spät rein",
+          "sound": "alarm",
+          "cooldown": 8,
+          "verified": false,
+          "note": "Skill 1803030 'Donnerzone' (EN: Ure's Area) laut Spieldaten; Guide (expcarry.com): 'Thunder Zone' mit Farbkreisen"
+        },
+        {
+          "name": "Ludras Prüfung",
+          "on": "cast",
+          "skill": [1803040],
+          "say": "Ludras Prüfung",
+          "show": "LUDRAS PRÜFUNG",
+          "sound": "alarm",
+          "cooldown": 8,
+          "verified": false,
+          "note": "Skill 1803040 laut Spieldaten, Mechanik unbekannt (Bingo?)"
+        },
+        {
+          "name": "Purpurner Donnerschlag",
+          "on": "cast",
+          "skill": [1803010],
+          "say": "Purpurner Donnerschlag",
+          "sound": "info",
+          "verified": false,
+          "note": "Skill 1803010 laut Spieldaten"
+        },
+        {
+          "name": "Kondensiertes Kraftfeld",
+          "on": "cast",
+          "skill": [1803020],
+          "say": "Kraftfeld",
+          "show": "KONDENSIERTES KRAFTFELD",
+          "sound": "info",
+          "verified": false,
+          "note": "Skill 1803020 laut Spieldaten"
+        },
+        {
+          "name": "Abgrundenergie-Zufuhr",
+          "on": "cast",
+          "skill": [1803000],
+          "say": "Abgrundenergie",
+          "show": "ABGRUNDENERGIE-ZUFUHR",
+          "sound": "info",
+          "verified": false,
+          "note": "Skill 1803000 laut Spieldaten (EN: Supply Eldritch Energy), vielleicht der Reaktor"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+[submodule "external/aion2-cube-radar"]
+	path = external/aion2-cube-radar
+	url = https://github.com/dr89mh/aion2-cube-radar.git
