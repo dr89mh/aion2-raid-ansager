@@ -2,17 +2,18 @@
   // Raid Announcer boss mod: Sanctuary of Eternal Ludra (Aion 2 Global, raid zone 600082)
   // State 2026-11-06, BEFORE our first own recording:
   //  - Boss NPC codes come from the game data (certain).
-  //  - HP thresholds come from guides for the Early Access / KR version (NC reworked the mechanics for the return on
-  //    2026-11-04, so uncertain).
-  //  - Skill codes 1803000–1803040 are Ludra skills according to the game data; which mechanic they are is a guess
-  //    ("verified": false). Everything else is read out by name in learning mode.
-  // After the first raid: run "RaidAnsager analyse <recording.pcapng>" and extend this file from the draft.
+  //  - Phases and HP thresholds come from a guild raid plan for the Global version (2026-11-01) and public guides.
+  //    HP triggers fire 2–3 % early so there is time to move.
+  //  - Skill codes: Wheel of Torment 1802900 and Feeding Time 1802980 (Rahu), Eruption of Power 1801970 and Abyssal
+  //    Gaze 1801962 (Ketu), Ure's Area 1803030 and Ludra's Trial 1803040 (Ludra) carry the names of guide mechanics in
+  //    the game data; that they belong to these bosses is not yet confirmed ("verified": false).
+  // After the first raid: run "RaidAnsager analyse <recording.pcapng>" and confirm or fix the codes from the draft.
   // Texts: a plain string, or one per language { "en": "…", "de": "…" }.
   "id": "ludra",
   "name": "Sanctuary: Eternal Ludra",
-  "version": "2026-11-06b",
+  "version": "2026-11-06c",
   "zones": [600082],
-  "notes": "According to guides Rahu and Ketu run in parallel (two groups of five), then Ludra with everyone.",
+  "notes": "Fusion reactor first (runners left/right only when the side reactors activate), then Rahu and Ketu in parallel (two groups of five), then Ludra with all ten.",
   "bosses": [
     {
       "id": "rahu",
@@ -23,24 +24,67 @@
           "name": "Pull",
           "on": "pull",
           "say": {
-            "en": "Rahu. Always pass on the purple circle, three puddles wipe the raid",
-            "de": "Rahu. Purpurkreis immer weitergeben, drei Pfützen sind ein Wipe"
+            "en": "Rahu. Bomb: share it when the countdown ends, number to number. Donuts: stack in front of the boss",
+            "de": "Rahu. Bombe bei Ablauf weitergeben, Nummer an Nummer. Donuts: eng vor dem Boss sammeln"
           },
-          "show": { "en": "RAHU – pass on the purple circle!", "de": "RAHU – Purpurkreis weitergeben!" },
-          "sound": "info"
+          "show": { "en": "RAHU – share bombs · donuts: stack in front", "de": "RAHU – Bomben weitergeben · Donuts: vorne sammeln" },
+          "sound": "info",
+          "showSeconds": 6
         },
         {
-          "name": "Arena split (~50 %)",
+          "name": "Wheel of Torment soon (~75 %)",
           "on": "hp",
-          "below": 52,
-          "say": {
-            "en": "Arena split soon. Move together into the right section",
-            "de": "Gleich Arena-Teilung. Zusammen in den richtigen Abschnitt"
-          },
-          "show": { "en": "ARENA SPLIT – stay together", "de": "ARENA-TEILUNG – zusammen bleiben" },
+          "below": 78,
+          "say": { "en": "Wheel of Torment soon. Stack at six o'clock in front of Rahu", "de": "Gleich Fessel der Qualen. Bei sechs Uhr vor Rahu sammeln" },
+          "show": { "en": "WHEEL OF TORMENT – stack at 6 o'clock", "de": "FESSEL DER QUALEN – 6 Uhr sammeln" },
           "sound": "alarm",
           "verified": false,
-          "note": "Guide (timesaver.gg): split at about half health"
+          "note": "Guild plan: damage share at 6 o'clock, then run together and drop the AoE rain downwards"
+        },
+        {
+          "name": "Wheel of Torment",
+          "on": "cast",
+          "skill": [1802900],
+          "say": { "en": "Stack, then drop the rain downwards", "de": "Sammeln, dann Regen nach unten ablegen" },
+          "show": { "en": "STACK – THEN RAIN DOWNWARDS", "de": "SAMMELN – DANN REGEN NACH UNTEN" },
+          "sound": "alarm",
+          "cooldown": 10,
+          "verified": false,
+          "note": "Skill 1802900 'Wheel of Torment' / 'Fessel der Qualen' in the game data"
+        },
+        {
+          "name": "Quadrants soon (~50 %)",
+          "on": "hp",
+          "below": 53,
+          "say": { "en": "Quadrants soon. Meet at eleven o'clock, north-west", "de": "Gleich Quadranten. Treffpunkt elf Uhr, Nordwesten" },
+          "show": { "en": "QUADRANTS – meet at 11 o'clock (NW)", "de": "QUADRANTEN – Treffpunkt 11 Uhr (NW)" },
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guild plan: meet in the NW quadrant, drop the rain at the outside edge; bombs and donuts continue"
+        },
+        {
+          "name": "Feeding Time soon (~25 %)",
+          "on": "hp",
+          "below": 28,
+          "say": {
+            "en": "Feeding Time soon. Marked player aims the yellow laser through an add",
+            "de": "Gleich Zeit des Verschlingens. Markierter zielt den gelben Laser durch ein Add"
+          },
+          "show": { "en": "FEEDING TIME – laser through an add", "de": "VERSCHLINGEN – Laser durch ein Add" },
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guild plan: whoever is in the line blocks or iframes; everyone else stays close to the boss"
+        },
+        {
+          "name": "Feeding Time",
+          "on": "cast",
+          "skill": [1802980],
+          "say": { "en": "Laser through the add, block in the line", "de": "Laser durchs Add, in der Linie blocken" },
+          "show": { "en": "LASER THROUGH THE ADD", "de": "LASER DURCHS ADD" },
+          "sound": "alarm",
+          "cooldown": 10,
+          "verified": false,
+          "note": "Skill 1802980 'Feeding Time' / 'Zeit des Verschlingens' in the game data"
         }
       ]
     },
@@ -53,25 +97,76 @@
           "name": "Pull",
           "on": "pull",
           "say": {
-            "en": "Ketu. Do not break the soul stones, keep them for the healers",
-            "de": "Ketu. Seelensteine nicht zerstören, für die Heiler aufheben"
+            "en": "Ketu. Catch the falling orbs before they land. Keep the soul stones for twenty-five percent",
+            "de": "Ketu. Fallende Kugeln vor dem Aufprall abfangen. Seelensteine für fünfundzwanzig Prozent aufheben"
           },
-          "show": { "en": "KETU – keep the soul stones", "de": "KETU – Seelensteine aufheben" },
-          "sound": "info"
+          "show": { "en": "KETU – catch orbs · keep soul stones", "de": "KETU – Kugeln abfangen · Seelensteine aufheben" },
+          "sound": "info",
+          "showSeconds": 6
         },
         {
-          "name": "Gaze phase (~50 %)",
+          "name": "Spirit Hunt soon (~75 %)",
           "on": "hp",
-          "below": 52,
+          "below": 78,
           "say": {
-            "en": "Gaze phase. Face the red eye, turn away from the blue eye",
-            "de": "Blick-Phase. Rotes Auge anschauen, blaues Auge wegdrehen"
+            "en": "Spirit hunt soon. Start at six o'clock, kill the spirits along the outer edge",
+            "de": "Gleich Geisterjagd. Start bei sechs Uhr, Geister am Außenrand töten"
           },
-          "show": { "en": "FACE RED – TURN AWAY FROM BLUE", "de": "ROT ANSCHAUEN – BLAU WEGDREHEN" },
+          "show": { "en": "SPIRIT HUNT – start at 6 o'clock", "de": "GEISTERJAGD – Start 6 Uhr" },
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guild plan: two players run left (clockwise) and right (counter-clockwise) from 6 to 12, regroup in the centre before the timer ends"
+        },
+        {
+          "name": "Spirit Hunt and eyes soon (~50 %)",
+          "on": "hp",
+          "below": 53,
+          "say": {
+            "en": "Spirit hunt again soon. From now on eyes: red look at it, blue look away",
+            "de": "Gleich wieder Geisterjagd. Ab jetzt Augen: rot anschauen, blau wegschauen"
+          },
+          "show": { "en": "SPIRIT HUNT · EYES: RED LOOK – BLUE AWAY", "de": "GEISTERJAGD · AUGEN: ROT HIN – BLAU WEG" },
           "color": "#FF7070",
           "sound": "alarm",
           "verified": false,
-          "note": "Guide (expcarry.com): red/blue gaze from about 50 %"
+          "note": "Guild plan: three eye checks one by one, then a donut / safe-zone follow-up"
+        },
+        {
+          "name": "Eyes",
+          "on": "cast",
+          "skill": [1801962],
+          "say": { "en": "Eyes: red look at it, blue look away", "de": "Augen: rot anschauen, blau wegschauen" },
+          "show": { "en": "RED LOOK AT IT – BLUE LOOK AWAY", "de": "ROT ANSCHAUEN – BLAU WEGSCHAUEN" },
+          "color": "#FF7070",
+          "sound": "alarm",
+          "cooldown": 5,
+          "verified": false,
+          "note": "Skill 1801962 'Abyssal Gaze' / 'Abgrundblick' in the game data; whether it is the eye check is a guess"
+        },
+        {
+          "name": "Power Eruption soon (~25 %)",
+          "on": "hp",
+          "below": 28,
+          "say": {
+            "en": "Power eruption soon. Stack at seven o'clock, move clockwise, everyone to their own soul stone",
+            "de": "Gleich Krafteruption. Bei sieben Uhr sammeln, im Uhrzeigersinn, jeder an seinen eigenen Seelenstein"
+          },
+          "show": { "en": "POWER ERUPTION – 7 o'clock, own soul stone", "de": "KRAFTERUPTION – 7 Uhr, eigener Seelenstein" },
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guild plan: split close to the crystals so each player gets their own immunity; if dead, stay dead"
+        },
+        {
+          "name": "Power Eruption",
+          "on": "cast",
+          "skill": [1801970],
+          "say": { "en": "Soul stone now", "de": "Jetzt Seelenstein" },
+          "show": { "en": "SOUL STONE NOW", "de": "JETZT SEELENSTEIN" },
+          "color": "#FF5050",
+          "sound": "alarm",
+          "cooldown": 10,
+          "verified": false,
+          "note": "Skill 1801970 'Eruption of Power' / 'Krafteruption' in the game data"
         }
       ]
     },
@@ -85,58 +180,70 @@
           "name": "Pull",
           "on": "pull",
           "say": {
-            "en": "Ludra. Red orb only with block or invincibility",
-            "de": "Ludra. Rote Kugel nur mit Block oder Unverwundbarkeit"
+            "en": "Ludra. Red orbs only with block or invincibility. Dodge the tornado before collecting",
+            "de": "Ludra. Rote Kugeln nur mit Block oder Unverwundbarkeit. Erst dem Tornado ausweichen, dann sammeln"
           },
           "show": { "en": "LUDRA – red orb: block / invincible", "de": "LUDRA – Rote Kugel: Block/Unverwundbar" },
-          "sound": "info"
+          "sound": "info",
+          "showSeconds": 6
         },
         {
-          "name": "Bingo 1 (~50 %)",
+          "name": "Bingo 1 soon (~50 %)",
           "on": "hp",
           "below": 53,
-          "say": { "en": "Bingo soon. Find the safe tile and call it", "de": "Gleich Bingo. Sicheres Feld suchen und ansagen" },
-          "show": { "en": "BINGO – find the safe tile", "de": "BINGO – sicheres Feld suchen" },
+          "say": { "en": "Bingo soon. Walk your route, watch the diagonal breath", "de": "Gleich Bingo. Eigene Route laufen, auf den diagonalen Atem achten" },
+          "show": { "en": "BINGO – walk your route", "de": "BINGO – eigene Route laufen" },
           "color": "#FFB000",
           "sound": "alarm",
           "verified": false,
-          "note": "Guides: first bingo at about 50 %"
+          "note": "Guild plan: 6×6 board, 10 routes without overlapping tiles, stop when the safe tile is found; after the first bingo come three line safe-zones in a row"
         },
         {
-          "name": "Red/blue (~35 %)",
+          "name": "Red/blue tethers soon (~33 %)",
           "on": "hp",
-          "below": 37,
-          "say": { "en": "Keep red and blue apart", "de": "Rot und Blau getrennt halten" },
-          "show": { "en": "KEEP RED / BLUE APART", "de": "ROT / BLAU TRENNEN" },
+          "below": 36,
+          "say": { "en": "Tethers soon. Facing Ludra: blue left, red right", "de": "Gleich Verbindungen. Mit Blick auf Ludra: blau links, rot rechts" },
+          "show": { "en": "TETHERS – BLUE LEFT · RED RIGHT", "de": "VERBINDUNGEN – BLAU LINKS · ROT RECHTS" },
           "color": "#FF7070",
           "sound": "alarm",
           "verified": false,
-          "note": "Guide (timesaver.gg): red/blue tethers from 35 %"
+          "note": "Guild plan ~33 %, another guide 35 %; each colour has a front and a back position, stay separated"
         },
         {
-          "name": "Bingo 2 (~25 %)",
+          "name": "Bingo 2 soon (~25 %)",
           "on": "hp",
           "below": 28,
-          "say": { "en": "Second bingo soon", "de": "Gleich zweites Bingo" },
-          "show": { "en": "BINGO 2 – find the safe tile", "de": "BINGO 2 – sicheres Feld suchen" },
+          "say": { "en": "Second bingo soon. Jump the shockwaves", "de": "Gleich zweites Bingo. Über die Schockwellen springen" },
+          "show": { "en": "BINGO 2 – jump the shockwaves", "de": "BINGO 2 – Schockwellen springen" },
           "color": "#FFB000",
           "sound": "alarm",
           "verified": false,
           "note": "Guides: second bingo at about 25 %"
         },
         {
-          "name": "Thunder zone",
+          "name": "Final colour circles soon (~10 %)",
+          "on": "hp",
+          "below": 12,
+          "say": {
+            "en": "Colour circles soon. Melee front, ranged back, enter on the last second",
+            "de": "Gleich Farbkreise. Nahkampf vorne, Fernkampf hinten, erst in der letzten Sekunde rein"
+          },
+          "show": { "en": "COLOUR CIRCLES – enter on the last second", "de": "FARBKREISE – erst in der letzten Sekunde" },
+          "color": "#FFB000",
+          "sound": "alarm",
+          "verified": false,
+          "note": "Guild plan: take a circle matching your assigned colour"
+        },
+        {
+          "name": "Colour circles",
           "on": "cast",
           "skill": [1803030],
-          "say": {
-            "en": "Thunder zone. Circle of your colour, step in late",
-            "de": "Donnerzone. Kreis in deiner Farbe, erst spät rein"
-          },
-          "show": { "en": "THUNDER ZONE – own colour, step in late", "de": "DONNERZONE – eigene Farbe, spät rein" },
+          "say": { "en": "Own colour, enter on the last second", "de": "Eigene Farbe, erst in der letzten Sekunde rein" },
+          "show": { "en": "OWN COLOUR – ENTER LATE", "de": "EIGENE FARBE – SPÄT REIN" },
           "sound": "alarm",
           "cooldown": 8,
           "verified": false,
-          "note": "Skill 1803030 'Ure's Area' / 'Donnerzone' in the game data; guide (expcarry.com): 'Thunder Zone' with coloured circles"
+          "note": "Skill 1803030 'Ure's Area' / 'Donnerzone' in the game data; guides: colour circles / 'Thunder Zone'"
         },
         {
           "name": "Ludra's Trial",

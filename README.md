@@ -4,7 +4,8 @@
 
 Calls out what the boss is doing in **dungeons and raids**: by voice, warning tone and text on top of the game, with
 boss HP and countdown bars for skills that come at regular intervals. It only reads the network traffic of Aion 2
-(Npcap, like Wireshark) and changes nothing in the game.
+(Npcap, like Wireshark) and changes nothing in the game. Its only internet connection is the update check on GitHub,
+which can be switched off.
 
 ![Overlay with boss HP, callout and countdown](docs/overlay.png)
 
@@ -48,6 +49,7 @@ Play Aion 2 in windowed or borderless mode, otherwise the overlay stays behind t
 | Voice, volume, speech rate, overlay size, warning tones | |
 | Save raid recordings | records only in raid zones with a mod, so the callouts can be improved; files stay on your PC |
 | Open fight logs | a readable log with timeline for every pull |
+| Automatic updates | checks GitHub for new versions and installs them itself – never during a boss fight or inside a dungeon – then restarts; "Check for updates" does it by hand |
 
 If something goes wrong, the file `%APPDATA%\RaidAnsager\fehler.log` helps (paste the path into the Explorer address
 bar).

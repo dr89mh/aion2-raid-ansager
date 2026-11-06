@@ -21,6 +21,8 @@ public sealed class Settings
     public bool AllBosses { get; set; } = true;
     /// <summary>The countdown timers learned from member logs (mod "dungeon-timers").</summary>
     public bool LearnedTimers { get; set; } = true;
+    /// <summary>Check GitHub for new versions and install them (never during a fight or inside an instance).</summary>
+    public bool AutoUpdate { get; set; } = true;
     public bool Muted { get; set; }
     public bool Tones { get; set; } = true;
     /// <summary>Keep a raw pcapng of the time spent in a mod zone (for building the boss mod after the raid).</summary>

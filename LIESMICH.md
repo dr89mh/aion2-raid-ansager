@@ -17,7 +17,8 @@ und als Text über dem Spiel. Dazu zeigt er Boss-HP und Kampfdauer an.
 
 Das Programm liest den Netzwerkverkehr von Aion 2 **nur mit**, so wie Wireshark. Daran erkennt es, welche Fähigkeit
 der Boss einsetzt, wie viel HP er hat und wann der Kampf beginnt und endet. Es verändert nichts am Spiel, liest keinen
-Speicher aus, drückt keine Tasten und baut keine Internetverbindung auf.
+Speicher aus und drückt keine Tasten. Die einzige Internetverbindung ist die Suche nach Updates bei GitHub, sie lässt
+sich im Menü abschalten.
 
 > **Achtung:** Laut einem anderen Tool-Autor stuft der NCSOFT-Support Software, die Spieldaten mitliest, als Verstoß
 > gegen die Nutzungsbedingungen ein. Die Nutzung erfolgt **auf eigenes Risiko**.
@@ -62,6 +63,9 @@ Sprachansagen funktionieren trotzdem.
 - **Raid-Mitschnitt speichern:** zeichnet nur in Raid-Zonen mit Mod auf (Ludra), damit die Ansagen verbessert werden
   können. Die Dateien bleiben auf deinem PC.
 - **Kampfprotokolle öffnen:** Zu jedem Pull gibt es ein lesbares Protokoll mit Zeitleiste
+- **Automatische Updates:** Das Programm sucht bei GitHub nach neuen Versionen und installiert sie selbst, aber nie
+  während eines Boss-Kampfs oder in einem Dungeon. Danach startet es neu. Über „Nach Updates suchen“ geht das auch von
+  Hand.
 - **Beenden**
 
 ## Was angesagt wird
@@ -77,7 +81,7 @@ allem bei Fähigkeiten mit längerer Ausholzeit und als Erinnerung, was gerade p
 tun muss, sagt er erst, wenn es für den Boss eine Mod gibt.
 
 Die erste Ludra-Version stammt aus Guides und den Spieldaten. Nach den ersten Raidabenden wird sie anhand echter
-Mitschnitte verbessert. Updates kommen als neue Version unter Releases.
+Mitschnitte verbessert. Neue Versionen installieren sich automatisch.
 
 ## Beim Bau der Countdown-Timer helfen
 

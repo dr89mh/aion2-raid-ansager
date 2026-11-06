@@ -13,7 +13,10 @@ internal static class TrayApp
     public static string Version =>
         typeof(TrayApp).Assembly.GetName().Version?.ToString(3) ?? "0";
 
-    public static int Run(string? replayFile, double speed)
+    /// <summary>Held by the live program while it runs; the update installer waits for it.</summary>
+    public const string LiveMutex = "RaidAnsager.Live";
+
+    public static int Run(string? replayFile, double speed, bool afterUpdate)
     {
         ApplicationConfiguration.Initialize();
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -21,7 +24,7 @@ internal static class TrayApp
         AppDomain.CurrentDomain.UnhandledException += (_, e) => ErrorLog.Write("crash", (Exception)e.ExceptionObject);
         var settings = Settings.Load();
         L.Lang = settings.Language;
-        using var single = new Mutex(true, replayFile is null ? "RaidAnsager.Live" : "RaidAnsager.Replay." + Environment.ProcessId,
+        using var single = new Mutex(true, replayFile is null ? LiveMutex : "RaidAnsager.Replay." + Environment.ProcessId,
             out var first);
         if (!first)
         {
@@ -49,7 +52,7 @@ internal static class TrayApp
                 MessageBoxIcon.Error);
             return 2;
         }
-        using var ctx = new AnsagerContext(settings, replayFile, speed);
+        using var ctx = new AnsagerContext(settings, replayFile, speed, afterUpdate);
         Application.Run(ctx);
         return 0;
     }
@@ -76,6 +79,8 @@ internal sealed class AnsagerContext : ApplicationContext
     private readonly NotifyIcon _tray;
     private readonly HotkeyWindow _hotkeys;
     private readonly System.Windows.Forms.Timer _timer;
+    private readonly Updater? _updater;
+    private ToolStripMenuItem? _updateItem;
     private readonly string? _replayName;
     private readonly double _speed;
     private ToolStripMenuItem _statusItem = null!, _modsItem = null!, _moveItem = null!, _muteItem = null!;
@@ -88,7 +93,7 @@ internal sealed class AnsagerContext : ApplicationContext
     private List<string> _modProblems = new();
     private int _tooltipTicks;
 
-    public AnsagerContext(Settings settings, string? replayFile, double speed)
+    public AnsagerContext(Settings settings, string? replayFile, double speed, bool afterUpdate)
     {
         _settings = settings;
         _replayName = replayFile is null ? null : Path.GetFileName(replayFile);
@@ -136,10 +141,35 @@ internal sealed class AnsagerContext : ApplicationContext
             _sniffer.PacketArrived += (raw, dev) => _pipe.OnPacket(raw, dev.Name, LiveSniffer.Describe(dev));
             _sniffer.StatusChanged += s => _captureRaw = s;
             _sniffer.Start();
-            _tray.ShowBalloonTip(4000, L.T("Raid announcer is running", "Raid-Ansager läuft"),
-                L.T("Callouts start automatically when a dungeon or raid boss is pulled. Right-click the icon for settings.",
-                    "Ansagen kommen automatisch, sobald ein Dungeon- oder Raid-Boss gepullt wird. Rechtsklick auf das Symbol für Einstellungen."),
-                ToolTipIcon.Info);
+            if (afterUpdate)
+                _tray.ShowBalloonTip(5000, L.T($"Updated to version {TrayApp.Version}", $"Auf Version {TrayApp.Version} aktualisiert"),
+                    L.T("What's new: see the releases page on GitHub.", "Was neu ist, steht auf der Release-Seite bei GitHub."), ToolTipIcon.Info);
+            else
+                _tray.ShowBalloonTip(4000, L.T("Raid announcer is running", "Raid-Ansager läuft"),
+                    L.T("Callouts start automatically when a dungeon or raid boss is pulled. Right-click the icon for settings.",
+                        "Ansagen kommen automatisch, sobald ein Dungeon- oder Raid-Boss gepullt wird. Rechtsklick auf das Symbol für Einstellungen."),
+                    ToolTipIcon.Info);
+            if (Environment.ProcessPath is { } exe && Updater.Allowed(exe))
+            {
+                _updater = new Updater(_settings, exe, busy: () => _engine.InFight || _engine.Zone >= 100_000,
+                    quit: () => _overlay.BeginInvoke(ExitThread));
+                _updater.Found += r => _overlay.BeginInvoke(() =>
+                {
+                    UpdateMenu();
+                    _tray.ShowBalloonTip(6000, L.T($"Version {r.Version.ToString(3)} is available", $"Version {r.Version.ToString(3)} ist verfügbar"),
+                        _settings.AutoUpdate
+                            ? L.T("It installs itself as soon as you are not in a dungeon or boss fight.",
+                                "Sie installiert sich, sobald du nicht in einem Dungeon oder Boss-Kampf bist.")
+                            : L.T("Right-click the icon → Install update.", "Rechtsklick auf das Symbol → Update installieren."),
+                        ToolTipIcon.Info);
+                });
+                _updater.Installing += r => _overlay.BeginInvoke(() =>
+                    _tray.ShowBalloonTip(3000, L.AppName, L.T($"Installing version {r.Version.ToString(3)} …", $"Installiere Version {r.Version.ToString(3)} …"),
+                        ToolTipIcon.Info));
+                _updater.Failed += reason => _overlay.BeginInvoke(() =>
+                    _tray.ShowBalloonTip(6000, L.T("Update failed", "Update fehlgeschlagen"), reason, ToolTipIcon.Warning));
+                _updater.Start();
+            }
         }
         else
         {
@@ -344,8 +374,43 @@ internal sealed class AnsagerContext : ApplicationContext
             null, (_, _) => ExportLogs()));
         menu.Items.Add(new ToolStripMenuItem(L.T("Open raid recordings", "Raid-Mitschnitte öffnen"), null, (_, _) => OpenFolder(AppPaths.Raw)));
         menu.Items.Add(new ToolStripSeparator());
+        if (_updater is not null)
+        {
+            menu.Items.Add(Toggle(L.T("Automatic updates", "Automatische Updates"), () => _settings.AutoUpdate, v => _settings.AutoUpdate = v));
+            _updateItem = new ToolStripMenuItem("", null, (_, _) => UpdateClicked());
+            menu.Items.Add(_updateItem);
+            UpdateMenu();
+        }
         menu.Items.Add(new ToolStripMenuItem(L.T("Exit", "Beenden"), null, (_, _) => ExitThread()));
         return menu;
+    }
+
+    private void UpdateMenu()
+    {
+        if (_updateItem is null || _updater is null) return;
+        _updateItem.Text = _updater.Available is { } r
+            ? L.T($"Install update {r.Version.ToString(3)} now", $"Update {r.Version.ToString(3)} jetzt installieren")
+            : L.T("Check for updates", "Nach Updates suchen");
+    }
+
+    private async void UpdateClicked()
+    {
+        if (_updater is null) return;
+        if (_updater.Available is null)
+        {
+            var found = await _updater.CheckAsync();
+            UpdateMenu();
+            if (!found)
+                _tray.ShowBalloonTip(4000, L.AppName, L.T($"You have the latest version ({TrayApp.Version}).",
+                    $"Du hast die neueste Version ({TrayApp.Version})."), ToolTipIcon.Info);
+            return;
+        }
+        if (_updater.Available is { Installable: false } page)
+        {
+            TrayApp.Open(page.PageUrl);
+            return;
+        }
+        await _updater.InstallAsync(); // quits on success; Failed shows the reason otherwise
     }
 
     private void SetLanguage(string lang)
@@ -479,6 +544,7 @@ internal sealed class AnsagerContext : ApplicationContext
         if (disposing)
         {
             _timer.Dispose();
+            _updater?.Dispose();
             _hotkeys.Dispose();
             _tray.Dispose();
             _overlay.Dispose();

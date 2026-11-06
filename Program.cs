@@ -21,6 +21,10 @@ internal static class Program
             L.Lang = args[lang + 1];
             args = args.Where((_, i) => i != lang && i != lang + 1).ToArray();
         }
+        // the downloaded new version, started by the old one to put itself in its place
+        if (args.Length > 0 && args[0] == Updater.InstallFlag) return Updater.RunInstaller(args[1..]);
+        var afterUpdate = args.Contains(Updater.AfterUpdateFlag);
+        args = args.Where(a => a != Updater.AfterUpdateFlag).ToArray();
         var cmd = args.Length > 0 ? args[0].ToLowerInvariant() : "";
         switch (cmd)
         {
@@ -69,10 +73,10 @@ internal static class Program
                 for (var i = 2; i < args.Length - 1; i++)
                     if (args[i] == "--speed" && double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
                             System.Globalization.CultureInfo.InvariantCulture, out var s)) speed = s;
-                return TrayApp.Run(replayFile: args[1], speed);
+                return TrayApp.Run(replayFile: args[1], speed, afterUpdate: false);
             }
             case "":
-                return TrayApp.Run(replayFile: null, speed: 1);
+                return TrayApp.Run(replayFile: null, speed: 1, afterUpdate);
             default:
                 return Usage();
         }

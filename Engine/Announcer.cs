@@ -146,6 +146,9 @@ public sealed class Announcer
 
     public uint Zone { get { lock (_gate) return _zone; } }
 
+    /// <summary>A boss fight is running (the updater waits for its end).</summary>
+    public bool InFight { get { lock (_gate) return _fights.Count > 0; } }
+
     public bool InModZone { get { lock (_gate) return ModZone(_zone); } }
 
     public void SetMods(IReadOnlyList<BossMod> mods)
