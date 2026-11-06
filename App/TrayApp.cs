@@ -539,8 +539,13 @@ internal sealed class AnsagerContext : ApplicationContext
         base.ExitThreadCore();
     }
 
+    private bool _disposed;
+
     protected override void Dispose(bool disposing)
     {
+        // Application.Run and the using in TrayApp.Run both dispose the context
+        if (_disposed) return;
+        _disposed = true;
         if (disposing)
         {
             _timer.Dispose();
