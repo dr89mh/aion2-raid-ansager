@@ -100,6 +100,7 @@ internal sealed class AnsagerContext : ApplicationContext
             {
                 Role = _settings.Role, SayUnknown = _settings.SayUnknown, AllBosses = _settings.AllBosses, InstanceBossesOnly = true,
             });
+        if (!_settings.LearnedTimers) _engine.Options.DisabledMods.Add("dungeon-timers");
         _logs = new FightLogWriter(replayFile is null ? AppPaths.Fights : Path.Combine(AppPaths.Fights, "replay"), _data);
         _engine.FightEnded += f =>
         {
@@ -127,6 +128,7 @@ internal sealed class AnsagerContext : ApplicationContext
         _hotkeys.Register(1, 'O', ToggleMove);
         _hotkeys.Register(2, 'M', ToggleMute);
         _hotkeys.Register(3, 'T', () => _engine.Test(_clock.Now()));
+        _hotkeys.Register(4, 'K', () => _engine.Mark(_clock.Now()));
 
         if (replayFile is null)
         {
@@ -240,6 +242,8 @@ internal sealed class AnsagerContext : ApplicationContext
         menu.Items.Add(_muteItem);
         menu.Items.Add(new ToolStripMenuItem(L.T("Test callout", "Test-Ansage"), null, (_, _) => _engine.Test(_clock.Now()))
             { ShortcutKeyDisplayString = keys + "T" });
+        menu.Items.Add(new ToolStripMenuItem(L.T("Mark the last boss attack as important", "Letzte Boss-Attacke als wichtig markieren"),
+            null, (_, _) => _engine.Mark(_clock.Now())) { ShortcutKeyDisplayString = keys + "K" });
         menu.Items.Add(new ToolStripSeparator());
 
         var language = new ToolStripMenuItem("Language / Sprache");
@@ -271,6 +275,12 @@ internal sealed class AnsagerContext : ApplicationContext
                 _settings.AllBosses = v;
                 _engine.Options.AllBosses = v;
             }));
+        menu.Items.Add(Toggle(L.T("Learned countdown timers", "Gelernte Countdown-Timer"), () => _settings.LearnedTimers, v =>
+        {
+            _settings.LearnedTimers = v;
+            if (v) _engine.Options.DisabledMods.Remove("dungeon-timers");
+            else _engine.Options.DisabledMods.Add("dungeon-timers");
+        }));
         menu.Items.Add(Toggle(L.T("Read out unknown boss skills", "Unbekannte Boss-Fähigkeiten vorlesen"),
             () => _settings.SayUnknown, v =>
             {
@@ -330,6 +340,8 @@ internal sealed class AnsagerContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem(L.T("Reload mods", "Mods neu laden"), null, (_, _) => ReloadMods()));
         menu.Items.Add(new ToolStripMenuItem(L.T("Open mods folder", "Mods-Ordner öffnen"), null, (_, _) => OpenFolder(AppPaths.Mods, exportMods: true)));
         menu.Items.Add(new ToolStripMenuItem(L.T("Open fight logs", "Kampfprotokolle öffnen"), null, (_, _) => OpenFolder(AppPaths.Fights)));
+        menu.Items.Add(new ToolStripMenuItem(L.T("Export logs for the timers (zip on the desktop)", "Protokolle für die Timer exportieren (ZIP auf den Desktop)"),
+            null, (_, _) => ExportLogs()));
         menu.Items.Add(new ToolStripMenuItem(L.T("Open raid recordings", "Raid-Mitschnitte öffnen"), null, (_, _) => OpenFolder(AppPaths.Raw)));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem(L.T("Exit", "Beenden"), null, (_, _) => ExitThread()));
@@ -406,6 +418,31 @@ internal sealed class AnsagerContext : ApplicationContext
             : ModsSummary() + "\n\n" + L.T("Problems:", "Probleme:") + "\n" + string.Join("\n", _modProblems.Take(12));
         _tray.ShowBalloonTip(5000, L.T("Boss mods reloaded", "Boss-Mods neu geladen"), msg,
             _modProblems.Count == 0 ? ToolTipIcon.Info : ToolTipIcon.Warning);
+    }
+
+    private void ExportLogs()
+    {
+        try
+        {
+            var (path, files) = LogExport.Create();
+            if (files == 0)
+            {
+                _tray.ShowBalloonTip(5000, L.AppName, L.T("No fight logs yet. Fight a dungeon boss first.",
+                    "Noch keine Kampfprotokolle. Erst einen Dungeon-Boss bekämpfen."), ToolTipIcon.Info);
+                File.Delete(path);
+                return;
+            }
+            _tray.ShowBalloonTip(6000, L.T("Logs exported", "Protokolle exportiert"),
+                L.T($"{files} fight(s) in {Path.GetFileName(path)} on your desktop. Please send this file to your raid lead. It contains no player names.",
+                    $"{files} Kampf/Kämpfe in {Path.GetFileName(path)} auf dem Desktop. Bitte diese Datei dem Raidleiter schicken. Sie enthält keine Spielernamen."),
+                ToolTipIcon.Info);
+            Process.Start("explorer.exe", $"/select,\"{path}\"");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            ErrorLog.Write("export", ex);
+            _tray.ShowBalloonTip(5000, L.AppName, L.T("Export failed: ", "Export fehlgeschlagen: ") + ex.Message, ToolTipIcon.Error);
+        }
     }
 
     private static void OpenFolder(string dir, bool exportMods = false)

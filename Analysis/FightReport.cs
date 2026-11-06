@@ -90,10 +90,12 @@ public static class FightReport
             var what = r.Type switch
             {
                 "CAST" => $"CAST    {(r.Caster is { } c ? $"[{c}] " : "")}{r.Code} {r.Name ?? "?"}{(r.Known ? " ✓" : "")}" +
-                          (r.Detail is { } d ? $"  → {d}" : ""),
+                          (r.TargetName is { } d ? $"  → {d}" : ""),
+                "HITME" => $"  {L.T("hit YOU", "trifft DICH")} {(r.Caster is { } c3 ? $"[{c3}] " : "")}{r.Code} {r.Name ?? "?"}",
+                "MARK" => $"*** {L.T("MARKED", "MARKIERT")} {r.Code} {r.Name ?? "?"} ({r.Value:0.0} s {L.T("after it", "danach")})",
                 "HIT" => $"  {L.T("hit", "Treffer")} {(r.Caster is { } c2 ? $"[{c2}] " : "")}{r.Code} {r.Name ?? "?"}" +
-                         (r.Detail is { } d2 ? $"  → {d2}" : "") + $"  ({r.Value:0.0} s {L.T("after the cast", "nach Cast")})",
-                "BUFF" => $"BUFF    {r.Code} {r.Name}" + (r.Detail is { } d3 ? $"  → {d3}" : ""),
+                         (r.TargetName is { } d2 ? $"  → {d2}" : "") + $"  ({r.Value:0.0} s {L.T("after the cast", "nach Cast")})",
+                "BUFF" => $"BUFF    {r.Code} {r.Name}  → {r.TargetName ?? $"Entity {r.Target}"}" + (r.Detail is { } d3 ? $" | {d3}" : ""),
                 "SPAWN" => $"SPAWN   NPC {r.Code} {r.Name ?? "?"} (Entity {r.Actor})",
                 "NPC-TOD" => $"{L.T("NPC-DIED", "NPC-TOD")} {r.Code} {r.Name ?? "?"}",
                 "TOD" => $"{L.T("DIED   ", "TOD    ")} {r.Name ?? $"{L.T("player", "Spieler")} {r.Target}"}",
@@ -191,16 +193,34 @@ public static class FightReport
 
     private static readonly JsonSerializerOptions Compact = new(ModLoader.Json) { WriteIndented = false };
 
-    /// <summary>Machine-readable copy of the records (one JSON object per line).</summary>
+    /// <summary>Version of the analysis format (.jsonl). 2 = header line, no player names.</summary>
+    public const int JsonlVersion = 2;
+
+    /// <summary>
+    /// Machine-readable copy of a pull, the format members send in for the timer analysis: a header line
+    /// (<c>type FIGHT</c>: boss, zone, start, result) and one line per record. Player names are never written,
+    /// targets are only "me" / "player" / "npc".
+    /// </summary>
     public static IEnumerable<string> Jsonl(Fight f)
     {
+        yield return JsonSerializer.Serialize(new
+        {
+            type = "FIGHT", v = JsonlVersion, npc = f.Npc, entity = f.Entity, zone = f.Zone, boss = f.Def.Name, start = f.PullMs,
+            duration = Math.Round((f.EndMs - f.PullMs) / 1000.0, 1), outcome = f.Outcome, won = f.Won, reset = f.Reset,
+            app = App.TrayApp.Version, mod = f.Mod.Id == "lernmodus" ? null : $"{f.Mod.Id} {f.Mod.Version}",
+        }, Compact);
         foreach (var r in f.Records)
+        {
+            var personal = r.Type == "TOD"; // a player's name
             yield return JsonSerializer.Serialize(new
             {
-                t = (r.TimeMs - f.PullMs) / 1000.0, type = r.Type, code = r.Code, name = r.Name, detail = r.Detail,
+                t = Math.Round((r.TimeMs - f.PullMs) / 1000.0, 3), type = r.Type, code = r.Code,
+                name = personal ? null : r.Name, detail = r.Detail,
                 hp = double.IsNaN(r.HpPct) ? (double?)null : Math.Round(r.HpPct, 2), actor = r.Actor, target = r.Target,
-                caster = r.Caster, value = double.IsNaN(r.Value) ? (double?)null : Math.Round(r.Value, 3), known = r.Known,
+                to = r.TargetKind.Length == 0 ? null : r.TargetKind, toNpc = r.TargetNpc == 0 ? (uint?)null : r.TargetNpc,
+                caster = r.Caster, value = double.IsNaN(r.Value) ? (double?)null : Math.Round(r.Value, 3), known = r.Known ? true : (bool?)null,
             }, Compact);
+        }
     }
 }
 

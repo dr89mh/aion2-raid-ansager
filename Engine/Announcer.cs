@@ -25,13 +25,19 @@ public sealed class AnnouncerOptions
     public bool AllBosses { get; set; }
     /// <summary>With <see cref="AllBosses"/>: only dungeon/raid bosses, not field bosses of the open world.</summary>
     public bool InstanceBossesOnly { get; set; }
+    /// <summary>Ids of mods that are loaded but switched off.</summary>
+    public HashSet<string> DisabledMods { get; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <param name="Caster">Name of the NPC that cast, when it was not the boss itself.</param>
-/// <param name="Value">HIT: seconds since the matching cast.</param>
+/// <param name="Value">HIT: seconds since the matching cast; MARK: seconds since the marked cast.</param>
 /// <param name="Known">CAST: a trigger of the mod covers this skill.</param>
+/// <param name="TargetKind">"me", "player", "npc" or "" – the analysis format keeps only this, never a player name.</param>
+/// <param name="TargetName">Name of the target, for the readable log only.</param>
+/// <param name="TargetNpc">NPC code of the target when it is an NPC.</param>
 public sealed record FightRecord(long TimeMs, string Type, uint Code, string? Name, string? Detail, double HpPct,
-    uint Actor, uint Target, string? Caster, double Value, bool Known);
+    uint Actor, uint Target, string? Caster, double Value, bool Known, string TargetKind = "", string? TargetName = null,
+    uint TargetNpc = 0);
 
 /// <summary>One pull of one boss, from the first combat event to kill, reset or zone change.</summary>
 public sealed class Fight
@@ -71,6 +77,7 @@ public sealed class Fight
     internal readonly Dictionary<uint, long> LastUnknownSay = new();
     internal readonly Dictionary<uint, long> OpenCasts = new(); // skill -> cast time, for the first hit after it
     internal readonly List<Bar> Bars = new();
+    internal (uint Skill, long At)? LastHitOnMe;
 }
 
 internal sealed class Bar
@@ -256,7 +263,7 @@ public sealed class Announcer
 
         var name = _data.SkillName(c.Skill);
         var known = matched || Covered(fight, c.Skill);
-        Record(fight, c.TimeMs, "CAST", c.Skill, name, TargetName(c.Target), actor: c.Actor, target: c.Target,
+        Record(fight, c.TimeMs, "CAST", c.Skill, name, null, actor: c.Actor, target: c.Target,
             caster: isBoss ? null : Label(actor) ?? $"Entity {c.Actor}", known: known);
         fight.OpenCasts[c.Skill] = c.TimeMs;
         if (!known && (isBoss || actor.Npc != 0) && IsNpcSkill(c.Skill)) Unknown(fight, c, name, isBoss ? null : Label(actor));
@@ -284,9 +291,16 @@ public sealed class Announcer
         }
         if (fight.Entity == h.Actor) Activity(fight, h.TimeMs);
         if (fight.OpenCasts.Remove(h.Skill, out var castAt))
-            Record(fight, h.TimeMs, "HIT", h.Skill, _data.SkillName(h.Skill), TargetName(h.Target),
+            Record(fight, h.TimeMs, "HIT", h.Skill, _data.SkillName(h.Skill), null,
                 actor: h.Actor, target: h.Target, caster: fight.Entity == h.Actor ? null : Label(actor),
                 value: (h.TimeMs - castAt) / 1000.0);
+        if (h.Target == _self && h.Target != 0)
+        {
+            // every NPC hit on us: what hurts most and what killed us
+            Record(fight, h.TimeMs, "HITME", h.Skill, _data.SkillName(h.Skill), null, actor: h.Actor, target: h.Target,
+                caster: fight.Entity == h.Actor ? null : Label(actor));
+            fight.LastHitOnMe = (h.Skill, h.TimeMs);
+        }
         foreach (var t in Active(fight, "hit"))
             if (t.Skill.Contains(h.Skill) && (t.Npc.Count == 0 || t.Npc.Contains(actor.Npc)) && TargetOk(t, fight, h.Target))
                 Fire(fight, t, h.TimeMs, new Ctx(h.Skill, h.Target, 0, actor.Npc));
@@ -367,7 +381,7 @@ public sealed class Announcer
             var onBoss = b.Target == f.Entity;
             if (fromNpc)
                 Record(f, b.TimeMs, "BUFF", b.Buff, onBoss ? L.T("on boss", "auf Boss") : null,
-                    $"{TargetName(b.Target) ?? $"Entity {b.Target}"} | {L.T("stack", "Stapel")} {b.Stack}" +
+                    $"{L.T("stack", "Stapel")} {b.Stack}" +
                     (b.DurationMs > 0 ? $", {b.DurationMs / 1000.0:0.#} s" : "") +
                     (b.SourceSkill != 0 ? $", {L.T("from", "aus")} {b.SourceSkill} {_data.SkillName(b.SourceSkill)}" : ""),
                     actor: b.Caster, target: b.Target, value: b.SourceSkill);
@@ -400,10 +414,12 @@ public sealed class Announcer
         if (npc == 0) return null;
         foreach (var m in _mods)
         {
-            if (m.Zones.Count > 0 && !m.Zones.Contains(_zone)) continue;
+            if (m.Zones.Count > 0 && !m.Zones.Contains(_zone) || Options.DisabledMods.Contains(m.Id)) continue;
             foreach (var d in m.Bosses) if (d.Npc.Contains(npc)) return (m, d);
         }
-        if (Options.AllBosses && (Options.InstanceBossesOnly ? _data.IsInstanceBoss(npc) : _data.IsBoss(npc)))
+        if (Options.AllBosses && (Options.InstanceBossesOnly
+                ? _data.IsInstanceBoss(npc) || _zone >= 100_000 && _data.IsBoss(npc) // open world maps have 4-digit ids
+                : _data.IsBoss(npc)))
             return (AdHoc, new BossDef { Id = npc.ToString(), Name = _data.NpcName(npc) ?? $"Boss {npc}", Npc = { npc } });
         return null;
     }
@@ -598,8 +614,69 @@ public sealed class Announcer
     }
 
     private void Record(Fight f, long time, string type, uint code, string? name, string? detail, uint actor = 0,
-        uint target = 0, string? caster = null, double value = double.NaN, bool known = false) =>
-        f.Records.Add(new FightRecord(time, type, code, name, detail, f.HpPct, actor, target, caster, value, known));
+        uint target = 0, string? caster = null, double value = double.NaN, bool known = false)
+    {
+        var kind = "";
+        uint targetNpc = 0;
+        if (target != 0)
+        {
+            if (target == _self) kind = "me";
+            else if (_ents.TryGetValue(target, out var e))
+            {
+                if (e.Player) kind = "player";
+                else if (e.Npc != 0)
+                {
+                    kind = "npc";
+                    targetNpc = e.Npc;
+                }
+            }
+        }
+        f.Records.Add(new FightRecord(time, type, code, name, detail, f.HpPct, actor, target, caster, value, known, kind,
+            TargetName(target), targetNpc));
+    }
+
+    /// <summary>
+    /// The user marks the attack that just happened as important (hotkey): the last NPC hit on us within 2 s, else the
+    /// last boss cast within 4 s. The analysis gives marked attacks priority for countdown timers.
+    /// </summary>
+    public string? Mark(long now)
+    {
+        lock (_gate)
+        {
+            if (now > _now) _now = now;
+            string? marked = null;
+            foreach (var f in _fights)
+            {
+                uint code = 0;
+                long at = 0;
+                if (f.LastHitOnMe is { } hit && _now - hit.At <= 2_000) (code, at) = hit;
+                else
+                    for (var i = f.Records.Count - 1; i >= 0; i--)
+                    {
+                        var r = f.Records[i];
+                        if (_now - r.TimeMs > 4_000) break;
+                        if (r.Type == "CAST" && r.Caster is null)
+                        {
+                            (code, at) = (r.Code, r.TimeMs);
+                            break;
+                        }
+                    }
+                if (code == 0) continue;
+                marked = _data.SkillName(code) ?? $"{L.T("Skill", "Fähigkeit")} {code}";
+                Record(f, _now, "MARK", code, _data.SkillName(code), null, value: (_now - at) / 1000.0);
+            }
+            if (marked is null)
+            {
+                Alert(L.T(_fights.Count == 0 ? "No boss fight to mark" : "Nothing to mark in the last seconds",
+                    _fights.Count == 0 ? "Kein Boss-Kampf zum Markieren" : "Nichts zum Markieren in den letzten Sekunden"),
+                    "#C0C0C0", _now, 2.5);
+                return null;
+            }
+            _out.Sound("info");
+            Alert(L.T($"Marked: {marked}", $"Markiert: {marked}"), "#7CFC7C", _now, 2.5);
+            return marked;
+        }
+    }
 
     // ------------------------------------------------------------------ clock
 

@@ -14,7 +14,10 @@ boss HP and countdown bars for skills that come at regular intervals. It only re
   callouts per role (tank, healer, DPS).
 - **English or German** (menu "Language / Sprache"): callouts, skill and boss names, menu and overlay. English is the
   default.
-- A fight log for every pull, which new boss mods can be built from.
+- **Learned countdowns** for 15 dungeon bosses so far, e.g. Ultimate Berk "Wave of Fury in 3" (38 of 38 times
+  8.4 s after its wind-up), Divine Auldor "Tempest Strike in 5", Watchdog Kwapo "Thunder Cry". Only the important ones
+  are spoken, the others are silent bars.
+- A fight log for every pull, which new boss mods and timers are built from.
 
 > **Warning:** According to another tool author, NCSOFT support considers software that reads game data a violation of
 > the terms of service. **Use at your own risk.**
@@ -26,7 +29,8 @@ boss HP and countdown bars for skills that come at regular intervals. It only re
 2. Download `RaidAnsager.exe` from [**Releases**](../../releases/latest) and start it. No installation, .NET is
    included. If SmartScreen warns: *More info → Run anyway* (the file is not signed).
 3. Right-click the speaker icon at the bottom right for the settings.
-   **Ctrl+Alt+O** moves the overlay, **Ctrl+Alt+M** mutes, **Ctrl+Alt+T** plays a test callout.
+   **Ctrl+Alt+O** moves the overlay, **Ctrl+Alt+M** mutes, **Ctrl+Alt+T** plays a test callout,
+   **Ctrl+Alt+K** marks the last boss attack as important (see below).
 
 Play Aion 2 in windowed or borderless mode, otherwise the overlay stays behind the game (the voice still works).
 
@@ -36,7 +40,10 @@ Play Aion 2 in windowed or borderless mode, otherwise the overlay stays behind t
 |---|---|
 | Language / Sprache | English or Deutsch; a voice of that language is picked automatically |
 | My role | Tank, healer or DPS: callouts meant only for another role are skipped |
-| All dungeon bosses (also without a mod) | off = only bosses with a mod (Ludra) |
+| All dungeon bosses (also without a mod) | off = only bosses with a mod (Ludra, learned timers) |
+| Learned countdown timers | the timers learned from member logs (mod `dungeon-timers`); off = learning mode only |
+| Mark the last boss attack as important (Ctrl+Alt+K) | see "Help build countdown timers" |
+| Export logs for the timers | zip on the desktop for your raid lead, no player names |
 | Read out unknown boss skills | the learning mode; turn it off if it talks too much (HP and overlay stay) |
 | Voice, volume, speech rate, overlay size, warning tones | |
 | Save raid recordings | records only in raid zones with a mod, so the callouts can be improved; files stay on your PC |
@@ -44,6 +51,21 @@ Play Aion 2 in windowed or borderless mode, otherwise the overlay stays behind t
 
 If something goes wrong, the file `%APPDATA%\RaidAnsager\fehler.log` helps (paste the path into the Explorer address
 bar).
+
+## Help build countdown timers
+
+Countdowns like "Backstab in 3" are learned from many pulls by many players: a boss skill gets a timer when it comes
+at a fixed cooldown or at a fixed gap after another boss skill, in at least 75 % of the recorded casts.
+
+1. **Just play** with the announcer running. Every dungeon and raid boss fight is logged automatically.
+2. **Press Ctrl+Alt+K right after an attack that matters** (e.g. a back attack you want to see coming). Marked attacks
+   get a timer first. Attacks that killed someone count as important automatically.
+3. **Send the logs:** right-click the icon → *Export logs for the timers*. A zip appears on your desktop; send it to
+   your raid lead. It contains no player names.
+
+The raid lead runs `RaidAnsager analyse <all zips or folders>`: the same pull from several members counts once, and the
+result is `vorhersagen.txt` (what can be predicted, and how reliably) plus `dungeon-timers.json`, a mod with the
+timers for the next release.
 
 ## Boss mods
 
@@ -67,7 +89,8 @@ Tools for analysis (need Npcap; `--lang en|de` sets the language for one run):
 
 | Command | Effect |
 |---|---|
-| `RaidAnsager analyse <recording.pcapng …> [--out folder]` | boss fights: log per pull, skill table (gaps, HP, lead time), draft mod |
+| `RaidAnsager analyse <recording.pcapng / log.jsonl / folder / export.zip …> [--out folder]` | boss fights: skill table (gaps, HP, lead time), countdown predictions, timer mod, draft mod |
+| `RaidAnsager export` | zip of all fight logs on the desktop (same as the menu item) |
 | `RaidAnsager replay <recording.pcapng> [--speed 4]` | play a recording with overlay and voice |
 | `RaidAnsager vorschau <recording.pcapng> [--mod file] [--alle]` | no sound: list of callouts and overlay images |
 | `RaidAnsager pruefen` | load and check the boss mods |

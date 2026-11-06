@@ -43,13 +43,19 @@ Sprachansagen funktionieren trotzdem.
 | **Strg+Alt+O** | Overlay verschieben (mit der Maus ziehen, dann noch einmal Strg+Alt+O) |
 | **Strg+Alt+M** | Stumm an/aus |
 | **Strg+Alt+T** | Test-Ansage |
+| **Strg+Alt+K** | Letzte Boss-Attacke als wichtig markieren (siehe unten) |
 
 **Rechtsklick** auf das Symbol öffnet das Menü:
 
 - **Language / Sprache:** English oder Deutsch (Standard: English). Fehlt eine deutsche Stimme: Windows-Einstellungen →
   Zeit und Sprache → Sprache → Stimmen hinzufügen.
 - **Meine Rolle:** Tank, Heiler oder DD. Ansagen, die nur eine andere Rolle betreffen, entfallen dann.
-- **Alle Dungeon-Bosse (auch ohne Mod):** Ist das aus, reagiert der Ansager nur auf Bosse mit eigener Mod (Ludra).
+- **Alle Dungeon-Bosse (auch ohne Mod):** Ist das aus, reagiert der Ansager nur auf Bosse mit eigener Mod (Ludra,
+  gelernte Timer).
+- **Gelernte Countdown-Timer:** Countdowns, die aus den Protokollen gelernt wurden, bisher für 15 Dungeon-Bosse (z. B.
+  Vollendete Berk „Furorwelle in 3“, Heiliger Auldor „Sturmstreich in 5“). Laut angesagt werden nur die wichtigen,
+  die anderen laufen als stiller Balken.
+- **Letzte Boss-Attacke als wichtig markieren** (Strg+Alt+K) und **Protokolle für die Timer exportieren:** siehe unten.
 - **Unbekannte Boss-Fähigkeiten vorlesen:** Liest Fähigkeiten, für die es noch keine eigene Ansage gibt, mit ihrem
   Spielnamen vor. Wird es zu viel, ausschalten. Boss-HP und Overlay bleiben.
 - **Stimme, Lautstärke, Sprechtempo, Overlay-Größe, Warntöne**
@@ -72,6 +78,20 @@ tun muss, sagt er erst, wenn es für den Boss eine Mod gibt.
 
 Die erste Ludra-Version stammt aus Guides und den Spieldaten. Nach den ersten Raidabenden wird sie anhand echter
 Mitschnitte verbessert. Updates kommen als neue Version unter Releases.
+
+## Beim Bau der Countdown-Timer helfen
+
+Countdowns wie „Rückenattacke in 3“ lernt das Programm aus vielen Pulls von vielen Spielern. Eine Boss-Fähigkeit
+bekommt einen Timer, wenn sie in mindestens 75 % der Fälle nach fester Abklingzeit kommt oder in festem Abstand nach
+einer anderen Boss-Fähigkeit.
+
+1. **Einfach spielen**, während der Ansager läuft. Jeder Dungeon- und Raid-Boss-Kampf wird automatisch protokolliert.
+2. **Direkt nach einer wichtigen Attacke Strg+Alt+K drücken**, z. B. nach einer Rückenattacke, die du kommen sehen
+   willst. Markierte Attacken bekommen zuerst einen Timer. Was jemanden getötet hat, zählt automatisch als wichtig.
+3. **Protokolle schicken:** Rechtsklick auf das Symbol → *Protokolle für die Timer exportieren*. Auf dem Desktop
+   liegt dann eine ZIP-Datei, die schickst du dem Raidleiter. Sie enthält keine Spielernamen.
+
+Mit der nächsten Version kommen die gelernten Timer dann für alle.
 
 ## Mod-Update einspielen
 

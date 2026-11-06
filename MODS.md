@@ -76,6 +76,22 @@ Platzhalter in `say`/`show`/`bar.text`: `{boss}`, `{skill}` (Spielname der Fähi
 { "name": "Welle", "on": "cast", "skill": [1800060], "delay": 2, "say": "Jetzt springen", "sound": "alarm" }
 ```
 
+## Countdown-Timer aus vielen Protokollen
+
+`RaidAnsager analyse` nimmt neben Mitschnitten auch Kampfprotokolle (`.jsonl`), ganze Ordner und die ZIP-Exporte der
+Mitglieder. Derselbe Pull von mehreren Mitgliedern (gleicher Boss, Start ±15 s) zählt einmal. Für jede Boss-Fähigkeit
+wird gemessen:
+
+- **Abklingzeit:** Abstand zwischen zwei Einsätzen,
+- **nach dem Pull:** Zeitpunkt des ersten Einsatzes,
+- **nach Fähigkeit Y:** fester Abstand nach einer anderen Boss-Fähigkeit. Bewertet wird er mit dem kleineren der
+  Werte „wie viele X-Einsätze erklärt er“ und „wie oft folgt auf Y wirklich X“.
+
+Ein Timer entsteht ab 4 Beispielen, 75 % Treffern (±1 s bzw. ±12 %) und 3 s Vorwarnung. Vorrang haben markierte
+Fähigkeiten (Strg+Alt+K, `MARK`), dann tödliche (letzter Treffer vor einem `TOD`), dann häufig treffende (`HITME`).
+`vorhersagen.txt` listet alle Fähigkeiten mit den drei Werten, `dungeon-timers.json` ist die fertige Mod (höchstens 6
+Timer pro Boss). Prüfen, Texte anpassen, in `mods/` legen und mit dem nächsten Release ausliefern.
+
 ## Woher die IDs kommen
 
 `RaidAnsager analyse <mitschnitt.pcapng>` schreibt je Pull ein Protokoll mit allen Casts (Skill-ID + Spielname), Buffs

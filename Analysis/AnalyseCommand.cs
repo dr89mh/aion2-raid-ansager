@@ -7,21 +7,27 @@ using RaidAnsager.Engine;
 namespace RaidAnsager.Analysis;
 
 /// <summary>
-/// <c>RaidAnsager analyse &lt;pcapng …&gt; [--out dir]</c>: replays recordings without sound, treats every boss of the
-/// game data as a fight (plus the mod bosses), and writes one log per pull, a summary and a draft mod.
+/// <c>RaidAnsager analyse &lt;inputs …&gt; [--out dir]</c>. Inputs: recordings (.pcapng/.pcap, replayed without sound,
+/// every boss of the game data counts) and fight logs (.jsonl, folders, .zip exports from members). Writes a summary,
+/// the predictions for countdowns (vorhersagen.txt) and a timer mod (dungeon-timers.json); for recordings also one log
+/// per pull and draft mods.
 /// </summary>
 public static class AnalyseCommand
 {
-    public static int Run(IReadOnlyList<string> files, string? outDir, TextWriter con)
+    public static int Run(IReadOnlyList<string> inputs, string? outDir, TextWriter con)
     {
-        if (files.Count == 0)
+        if (inputs.Count == 0)
         {
-            con.WriteLine("Aufruf: RaidAnsager analyse <aufnahme.pcapng> [weitere …] [--out <ordner>]");
+            con.WriteLine(L.T("Usage: RaidAnsager analyse <recording.pcapng | log.jsonl | folder | export.zip> […] [--out <folder>]",
+                "Aufruf: RaidAnsager analyse <aufnahme.pcapng | protokoll.jsonl | ordner | export.zip> […] [--out <ordner>]"));
             return 2;
         }
-        if (!LiveSniffer.IsNpcapInstalled())
+        var captures = inputs.Where(i => !FightLogReader.IsLogInput(i)).ToList();
+        var logs = inputs.Where(FightLogReader.IsLogInput).ToList();
+        if (captures.Count > 0 && !LiveSniffer.IsNpcapInstalled())
         {
-            con.WriteLine("Npcap fehlt (npcap.com): ohne Npcap lassen sich keine pcapng-Dateien lesen.");
+            con.WriteLine(L.T("Npcap is missing (npcap.com): recordings cannot be read without it.",
+                "Npcap fehlt (npcap.com): ohne Npcap lassen sich keine pcapng-Dateien lesen."));
             return 3;
         }
         outDir ??= Path.Combine(AppPaths.Fights, "analyse_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
@@ -30,62 +36,73 @@ public static class AnalyseCommand
         var data = GameData.Load();
         var problems = new List<string>();
         var mods = ModLoader.LoadAll(AppPaths.ModFolders, problems);
-        foreach (var p in problems) con.WriteLine("Mod-Hinweis: " + p);
+        foreach (var p in problems) con.WriteLine("Mod: " + p);
 
-        var engine = new Announcer(data, mods, new NullOutput(), new AnnouncerOptions { AllBosses = true, SayUnknown = false });
-        var fights = new List<Fight>();
-        var zones = new List<(long Ms, uint Zone)>();
-        engine.FightEnded += f => fights.Add(f);
-        var watch = Stopwatch.StartNew();
-        using (var pipe = new Pipeline(engine, tickWithPackets: true))
+        // recordings
+        var recorded = new List<Fight>();
+        var zones = new List<uint>();
+        if (captures.Count > 0)
         {
-            foreach (var file in files)
+            var engine = new Announcer(data, mods, new NullOutput(), new AnnouncerOptions { AllBosses = true, SayUnknown = false });
+            engine.FightEnded += f => recorded.Add(f);
+            var watch = Stopwatch.StartNew();
+            using var pipe = new Pipeline(engine, tickWithPackets: true);
+            foreach (var file in captures)
             {
-                con.WriteLine($"lese {file} …");
+                con.WriteLine($"{L.T("reading", "lese")} {file} …");
                 uint lastZone = 0;
                 CaptureFileSource.ReadAll(file, raw =>
                 {
-                    pipe.OnPacket(raw, "datei");
-                    var z = engine.Zone;
-                    if (z != lastZone)
-                    {
-                        zones.Add((pipe.LastPacketMs, z));
-                        lastZone = z;
-                    }
+                    pipe.OnPacket(raw, "file");
+                    if (engine.Zone != lastZone) zones.Add(lastZone = engine.Zone);
                 });
-                engine.Flush("Ende der Aufnahme");
+                engine.Flush(L.T("end of recording", "Ende der Aufnahme"));
             }
-            con.WriteLine($"{pipe.Packets:N0} Pakete in {watch.Elapsed.TotalSeconds:0.0} s");
+            con.WriteLine(L.T($"{pipe.Packets:N0} packets in {watch.Elapsed.TotalSeconds:0.0} s", $"{pipe.Packets:N0} Pakete in {watch.Elapsed.TotalSeconds:0.0} s"));
         }
-
-        var real = fights.Where(f => (f.EndMs - f.PullMs) >= 10_000).ToList();
+        recorded = recorded.Where(f => (f.EndMs - f.PullMs) >= 10_000).ToList();
         var writer = new FightLogWriter(outDir, data);
-        foreach (var f in real) writer.Write(f);
+        foreach (var f in recorded) writer.Write(f);
+
+        // fight logs of members
+        var readProblems = new List<string>();
+        var imported = logs.Count == 0 ? [] : FightLogReader.Read(logs, data, readProblems);
+        foreach (var p in readProblems.Take(20)) con.WriteLine(L.T("Log: ", "Protokoll: ") + p);
+        var all = FightLogReader.Dedupe(recorded.Concat(imported.Where(f => (f.EndMs - f.PullMs) >= 10_000)));
+        var duplicates = recorded.Count + imported.Count(f => (f.EndMs - f.PullMs) >= 10_000) - all.Count;
 
         var sb = new StringBuilder();
-        sb.AppendLine($"Raid-Ansager – Analyse von {files.Count} Aufnahme(n), {DateTime.Now:dd.MM.yyyy HH:mm}");
-        sb.AppendLine($"Zonen: {string.Join(", ", zones.Select(z => z.Zone).Distinct())}");
-        sb.AppendLine($"Boss-Kämpfe ≥ 10 s: {real.Count} (verworfen: {fights.Count - real.Count} kurze)");
+        sb.AppendLine(L.T($"Raid Announcer – analysis, {DateTime.Now:yyyy-MM-dd HH:mm}", $"Raid-Ansager – Analyse, {DateTime.Now:dd.MM.yyyy HH:mm}"));
+        sb.AppendLine(L.T($"Inputs: {captures.Count} recording(s), {logs.Count} log input(s) with {imported.Count} pull(s)",
+            $"Eingaben: {captures.Count} Aufnahme(n), {logs.Count} Protokoll-Eingabe(n) mit {imported.Count} Pull(s)"));
+        if (zones.Count > 0) sb.AppendLine($"{L.T("Zones", "Zonen")}: {string.Join(", ", zones.Distinct())}");
+        sb.AppendLine(L.T($"Boss fights ≥ 10 s: {all.Count} (the same pull from several members counted once: {duplicates} duplicates)",
+            $"Boss-Kämpfe ≥ 10 s: {all.Count} (derselbe Pull von mehreren Mitgliedern zählt einmal: {duplicates} doppelt)"));
         sb.AppendLine();
-        foreach (var g in real.GroupBy(f => (f.Zone, f.Def.Id)))
+        foreach (var g in all.GroupBy(f => f.Npc).OrderByDescending(g => g.Count()))
         {
             var list = g.ToList();
-            var def = list[0].Def;
-            sb.AppendLine($"=== {def.Name} (NPC {string.Join("/", def.Npc)}), Zone {g.Key.Zone}: {list.Count} Pull(s)");
-            foreach (var f in list)
-                sb.AppendLine($"    {DateTimeOffset.FromUnixTimeMilliseconds(f.PullMs).ToLocalTime():dd.MM. HH:mm:ss}  " +
-                              $"{FightReport.Clock((f.EndMs - f.PullMs) / 1000.0),8}  {f.Outcome}");
+            sb.AppendLine($"=== {FightReport.Boss(list[0], data)} (NPC {g.Key}): {list.Count} Pull(s), " +
+                          $"{list.Count(f => f.Won)} {L.T("kill(s)", "Sieg(e)")}");
             sb.AppendLine(FightReport.SkillTable(FightReport.Skills(list, data)));
         }
-        foreach (var zone in real.GroupBy(f => f.Zone))
-        {
-            var draft = FightReport.Draft(zone.ToList(), data);
-            File.WriteAllText(Path.Combine(outDir, $"entwurf_zone{zone.Key}.json"), FightReport.DraftJson(draft), new UTF8Encoding(false));
-        }
-        var summary = Path.Combine(outDir, "zusammenfassung.txt");
-        File.WriteAllText(summary, sb.ToString(), new UTF8Encoding(true));
+        if (recorded.Count > 0)
+            foreach (var zone in recorded.GroupBy(f => f.Zone))
+                File.WriteAllText(Path.Combine(outDir, $"entwurf_zone{zone.Key}.json"),
+                    FightReport.DraftJson(FightReport.Draft(zone.ToList(), data)), new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(outDir, "zusammenfassung.txt"), sb.ToString(), new UTF8Encoding(true));
+
+        // countdown predictions
+        var predictions = Predictor.Run(all, data);
+        File.WriteAllText(Path.Combine(outDir, "vorhersagen.txt"), Predictor.Report(predictions, data), new UTF8Encoding(true));
+        var timerMod = Predictor.Mod(predictions, data);
+        File.WriteAllText(Path.Combine(outDir, "dungeon-timers.json"), FightReport.DraftJson(timerMod), new UTF8Encoding(false));
+        var timers = timerMod.Bosses.Sum(b => b.Triggers.Count(t => t.Bar is not null));
+
         con.WriteLine(sb.ToString());
-        con.WriteLine($"Protokolle und Entwürfe: {outDir}");
+        con.WriteLine(L.T($"Countdowns: {timers} timer(s) for {timerMod.Bosses.Count} boss(es) → dungeon-timers.json, details in vorhersagen.txt",
+            $"Countdowns: {timers} Timer für {timerMod.Bosses.Count} Boss(e) → dungeon-timers.json, Details in vorhersagen.txt"));
+        con.WriteLine(L.T($"Output: {outDir}", $"Ausgabe: {outDir}"));
         return 0;
     }
 }

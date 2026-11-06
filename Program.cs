@@ -49,6 +49,13 @@ internal static class Program
                 foreach (var p in problems) System.Console.WriteLine("Problem: " + p);
                 return problems.Count == 0 ? 0 : 1;
             }
+            case "export":
+            {
+                Console();
+                var (path, files) = LogExport.Create();
+                System.Console.WriteLine(L.T($"{files} fight log(s) → {path}", $"{files} Kampfprotokoll(e) → {path}"));
+                return 0;
+            }
             case "vorschau":
                 Console();
                 return PreviewCommand.Run(args, System.Console.Out);
