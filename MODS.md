@@ -78,6 +78,11 @@ Platzhalter in `say`/`show`/`bar.text`: `{boss}`, `{skill}` (Spielname der Fähi
 
 ## Countdown-Timer aus vielen Protokollen
 
+**Abholen:** Die Mitglieder laden ihre Protokolle über das Menü hoch, an den Upload-Dienst `server/upload-worker`.
+`RaidAnsager abholen` lädt alle neuen Uploads nach `%APPDATA%\RaidAnsager\uploads` und startet gleich die Auswertung
+über diese Uploads und die eigenen Protokolle. `--loeschen` entfernt die abgeholten Uploads vom Dienst, `--ohne-analyse`
+lädt nur herunter. Der Admin-Schlüssel liegt in `%APPDATA%\RaidAnsager\admin-token.txt` und gehört nie ins Repo.
+
 `RaidAnsager analyse` nimmt neben Mitschnitten auch Kampfprotokolle (`.jsonl`), ganze Ordner und die ZIP-Exporte der
 Mitglieder. Derselbe Pull von mehreren Mitgliedern (gleicher Boss, Start ±15 s) zählt einmal. Für jede Boss-Fähigkeit
 wird gemessen:

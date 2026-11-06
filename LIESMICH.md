@@ -17,8 +17,8 @@ und als Text über dem Spiel. Dazu zeigt er Boss-HP und Kampfdauer an.
 
 Das Programm liest den Netzwerkverkehr von Aion 2 **nur mit**, so wie Wireshark. Daran erkennt es, welche Fähigkeit
 der Boss einsetzt, wie viel HP er hat und wann der Kampf beginnt und endet. Es verändert nichts am Spiel, liest keinen
-Speicher aus und drückt keine Tasten. Die einzige Internetverbindung ist die Suche nach Updates bei GitHub, sie lässt
-sich im Menü abschalten.
+Speicher aus und drückt keine Tasten. Ins Internet geht es nur bei der Suche nach Updates auf GitHub (abschaltbar) und
+beim Hochladen der Protokolle, wenn du es anklickst.
 
 > **Achtung:** Laut einem anderen Tool-Autor stuft der NCSOFT-Support Software, die Spieldaten mitliest, als Verstoß
 > gegen die Nutzungsbedingungen ein. Die Nutzung erfolgt **auf eigenes Risiko**.
@@ -56,7 +56,7 @@ Sprachansagen funktionieren trotzdem.
 - **Gelernte Countdown-Timer:** Countdowns, die aus den Protokollen gelernt wurden, bisher für 15 Dungeon-Bosse (z. B.
   Vollendete Berk „Furorwelle in 3“, Heiliger Auldor „Sturmstreich in 5“). Laut angesagt werden nur die wichtigen,
   die anderen laufen als stiller Balken.
-- **Letzte Boss-Attacke als wichtig markieren** (Strg+Alt+K) und **Protokolle für die Timer exportieren:** siehe unten.
+- **Letzte Boss-Attacke als wichtig markieren** (Strg+Alt+K) und **Protokolle für die Timer hochladen:** siehe unten.
 - **Unbekannte Boss-Fähigkeiten vorlesen:** Liest Fähigkeiten, für die es noch keine eigene Ansage gibt, mit ihrem
   Spielnamen vor. Wird es zu viel, ausschalten. Boss-HP und Overlay bleiben.
 - **Stimme, Lautstärke, Sprechtempo, Overlay-Größe, Warntöne**
@@ -92,8 +92,9 @@ einer anderen Boss-Fähigkeit.
 1. **Einfach spielen**, während der Ansager läuft. Jeder Dungeon- und Raid-Boss-Kampf wird automatisch protokolliert.
 2. **Direkt nach einer wichtigen Attacke Strg+Alt+K drücken**, z. B. nach einer Rückenattacke, die du kommen sehen
    willst. Markierte Attacken bekommen zuerst einen Timer. Was jemanden getötet hat, zählt automatisch als wichtig.
-3. **Protokolle schicken:** Rechtsklick auf das Symbol → *Protokolle für die Timer exportieren*. Auf dem Desktop
-   liegt dann eine ZIP-Datei, die schickst du dem Raidleiter. Sie enthält keine Spielernamen.
+3. **Protokolle hochladen:** Rechtsklick auf das Symbol → *Protokolle für die Timer hochladen*. Ein Klick genügt.
+   Hochgeladen werden nur neue Protokolle, ohne Spielernamen. Ohne Internet geht es auch über *Protokolle als ZIP
+   exportieren*, dann liegt die Datei auf dem Desktop.
 
 Mit der nächsten Version kommen die gelernten Timer dann für alle.
 

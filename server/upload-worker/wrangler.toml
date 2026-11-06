@@ -1,0 +1,14 @@
+# Raid Announcer upload service – deploy with:  npx wrangler deploy   (from this folder)
+# The admin token is a secret:                  npx wrangler secret put ADMIN_TOKEN
+name = "raidansager-upload"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[vars]
+# Shipped with the program (App/Uploader.cs); not a secret, it only keeps random scanners away.
+UPLOAD_TOKEN = "ra1-StEqRMONlmt418Gtl69V-g3_"
+
+[[kv_namespaces]]
+binding = "UPLOADS"
+id = "9cc39a57e1734d30b5ed4b8d3960b107"

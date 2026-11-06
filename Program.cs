@@ -53,6 +53,31 @@ internal static class Program
                 foreach (var p in problems) System.Console.WriteLine("Problem: " + p);
                 return problems.Count == 0 ? 0 : 1;
             }
+            case "hochladen":
+            case "upload":
+            {
+                Console();
+                var (sent, error) = Uploader.UploadAsync(Settings.Load()).GetAwaiter().GetResult();
+                System.Console.WriteLine(error ?? L.T($"{sent} fight log(s) uploaded to {Uploader.Service}", $"{sent} Kampfprotokoll(e) hochgeladen nach {Uploader.Service}"));
+                return error is null ? 0 : 1;
+            }
+            case "abholen":
+            case "collect":
+            {
+                Console();
+                System.Console.WriteLine(L.T($"Collecting uploads from {Uploader.Service} …", $"Hole Uploads von {Uploader.Service} …"));
+                var (fresh, total, error) = Uploader.CollectAsync(args.Contains("--loeschen") || args.Contains("--delete"), System.Console.Out)
+                    .GetAwaiter().GetResult();
+                if (error is not null)
+                {
+                    System.Console.WriteLine(error);
+                    return 1;
+                }
+                System.Console.WriteLine(L.T($"{fresh} new of {total} upload(s) → {Uploader.Inbox}", $"{fresh} neu von {total} Upload(s) → {Uploader.Inbox}"));
+                if (args.Contains("--ohne-analyse") || args.Contains("--no-analysis")) return 0;
+                // the uploads of all members plus the own logs
+                return AnalyseCommand.Run([Uploader.Inbox, AppPaths.Fights], null, System.Console.Out);
+            }
             case "export":
             {
                 Console();

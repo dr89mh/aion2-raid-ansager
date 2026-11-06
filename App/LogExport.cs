@@ -4,24 +4,38 @@ using System.Text.Json.Nodes;
 namespace RaidAnsager.App;
 
 /// <summary>
-/// Packs the fight logs (.jsonl) into one zip on the desktop, for sending to whoever builds the timers. Version 2 logs
-/// contain no player names; older ones are cleaned on the way (target names and the names of the dead removed).
+/// Packs fight logs (.jsonl) into a zip, for the upload or for sending by hand. Version 2 logs contain no player names;
+/// older ones are cleaned on the way (target names and the names of the dead removed).
 /// </summary>
 public static class LogExport
 {
-    public static (string Path, int Files) Create()
+    /// <summary>Every fight log of the live program (replays excluded), oldest first.</summary>
+    public static List<string> LogFiles()
     {
         var dir = AppPaths.Fights;
-        var files = Directory.Exists(dir)
-            ? Directory.EnumerateFiles(dir, "*.jsonl", SearchOption.AllDirectories)
-                .Where(f => !f.Contains(Path.DirectorySeparatorChar + "replay" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                .ToList()
-            : [];
+        if (!Directory.Exists(dir)) return [];
+        var replay = Path.DirectorySeparatorChar + "replay" + Path.DirectorySeparatorChar;
+        var analysis = Path.DirectorySeparatorChar + "analyse_";
+        return Directory.EnumerateFiles(dir, "*.jsonl", SearchOption.AllDirectories)
+            .Where(f => !f.Contains(replay, StringComparison.OrdinalIgnoreCase) && !f.Contains(analysis, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => f, StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>Zip on the desktop with every fight log.</summary>
+    public static (string Path, int Files) Create()
+    {
+        var files = LogFiles();
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         var target = Path.Combine(desktop.Length > 0 ? desktop : AppPaths.Root, $"RaidAnsager-logs-{DateTime.Now:yyyyMMdd-HHmm}.zip");
         if (files.Count == 0) return (target, 0);
         if (File.Exists(target)) File.Delete(target); // a second export in the same minute
-        using var zip = ZipFile.Open(target, ZipArchiveMode.Create);
+        using (var f = File.Create(target)) Write(files, f);
+        return (target, files.Count);
+    }
+
+    public static void Write(IEnumerable<string> files, Stream output)
+    {
+        using var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
         foreach (var file in files)
         {
             var entry = zip.CreateEntry(Path.GetFileName(file), CompressionLevel.SmallestSize);
@@ -34,7 +48,6 @@ public static class LogExport
                 w.WriteLine(v2 ? line : Clean(line));
             }
         }
-        return (target, files.Count);
     }
 
     /// <summary>Version 1 lines: the detail of casts, hits, deaths and buffs could hold player names.</summary>

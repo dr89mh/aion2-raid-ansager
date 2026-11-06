@@ -370,7 +370,10 @@ internal sealed class AnsagerContext : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem(L.T("Reload mods", "Mods neu laden"), null, (_, _) => ReloadMods()));
         menu.Items.Add(new ToolStripMenuItem(L.T("Open mods folder", "Mods-Ordner öffnen"), null, (_, _) => OpenFolder(AppPaths.Mods, exportMods: true)));
         menu.Items.Add(new ToolStripMenuItem(L.T("Open fight logs", "Kampfprotokolle öffnen"), null, (_, _) => OpenFolder(AppPaths.Fights)));
-        menu.Items.Add(new ToolStripMenuItem(L.T("Export logs for the timers (zip on the desktop)", "Protokolle für die Timer exportieren (ZIP auf den Desktop)"),
+        if (Uploader.Configured)
+            menu.Items.Add(new ToolStripMenuItem(L.T("Upload logs for the timers", "Protokolle für die Timer hochladen"), null,
+                (_, _) => UploadLogs()) { Font = new Font(menu.Font, FontStyle.Bold) });
+        menu.Items.Add(new ToolStripMenuItem(L.T("Export logs as zip (desktop)", "Protokolle als ZIP exportieren (Desktop)"),
             null, (_, _) => ExportLogs()));
         menu.Items.Add(new ToolStripMenuItem(L.T("Open raid recordings", "Raid-Mitschnitte öffnen"), null, (_, _) => OpenFolder(AppPaths.Raw)));
         menu.Items.Add(new ToolStripSeparator());
@@ -485,6 +488,38 @@ internal sealed class AnsagerContext : ApplicationContext
             _modProblems.Count == 0 ? ToolTipIcon.Info : ToolTipIcon.Warning);
     }
 
+    private bool _uploading;
+
+    private async void UploadLogs()
+    {
+        if (_uploading) return;
+        _uploading = true;
+        try
+        {
+            var pending = Uploader.Pending().Count;
+            if (pending == 0)
+            {
+                _tray.ShowBalloonTip(5000, L.AppName, L.T("No new fight logs since the last upload. Fight a dungeon boss first.",
+                    "Keine neuen Kampfprotokolle seit dem letzten Upload. Erst einen Dungeon-Boss bekämpfen."), ToolTipIcon.Info);
+                return;
+            }
+            _tray.ShowBalloonTip(3000, L.AppName, L.T($"Uploading {pending} fight log(s) …", $"Lade {pending} Kampfprotokoll(e) hoch …"), ToolTipIcon.Info);
+            var (sent, error) = await Task.Run(() => Uploader.UploadAsync(_settings));
+            if (error is null)
+                _tray.ShowBalloonTip(6000, L.T("Thank you!", "Danke!"),
+                    L.T($"{sent} fight(s) uploaded. They help build the countdown timers for everyone. No player names were sent.",
+                        $"{sent} Kampf/Kämpfe hochgeladen. Damit entstehen die Countdown-Timer für alle. Spielernamen wurden nicht übertragen."),
+                    ToolTipIcon.Info);
+            else
+                _tray.ShowBalloonTip(6000, L.T("Upload failed", "Upload fehlgeschlagen"),
+                    (sent > 0 ? L.T($"{sent} sent, the rest failed: ", $"{sent} gesendet, der Rest nicht: ") : "") + error, ToolTipIcon.Warning);
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
     private void ExportLogs()
     {
         try
@@ -498,8 +533,8 @@ internal sealed class AnsagerContext : ApplicationContext
                 return;
             }
             _tray.ShowBalloonTip(6000, L.T("Logs exported", "Protokolle exportiert"),
-                L.T($"{files} fight(s) in {Path.GetFileName(path)} on your desktop. Please send this file to your raid lead. It contains no player names.",
-                    $"{files} Kampf/Kämpfe in {Path.GetFileName(path)} auf dem Desktop. Bitte diese Datei dem Raidleiter schicken. Sie enthält keine Spielernamen."),
+                L.T($"{files} fight(s) in {Path.GetFileName(path)} on your desktop. It contains no player names.",
+                    $"{files} Kampf/Kämpfe in {Path.GetFileName(path)} auf dem Desktop. Sie enthält keine Spielernamen."),
                 ToolTipIcon.Info);
             Process.Start("explorer.exe", $"/select,\"{path}\"");
         }
