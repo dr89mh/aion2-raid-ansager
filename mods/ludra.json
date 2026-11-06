@@ -1,7 +1,8 @@
 {
   // Raid Announcer boss mod: Sanctuary of Eternal Ludra (Aion 2 Global, raid zone 600082)
   // State 2026-11-06, BEFORE our first own recording:
-  //  - Boss NPC codes come from the game data (certain).
+  //  - Boss NPC codes come from the game data (certain). Normal = zone 600082, Hard = zone 600083 with its own NPCs
+  //    (Rahu 2300282, Ketu 2300283, Ludra 2300290; from the A2Tools DPS Meter game data, GPL-3.0, client of 2026-11-04).
   //  - Phases and HP thresholds come from a guild raid plan for the Global version (2026-11-01) and public guides.
   //    HP triggers fire 2–3 % early so there is time to move.
   //  - Skill codes: Wheel of Torment 1802900 and Feeding Time 1802980 (Rahu), Eruption of Power 1801970 and Abyssal
@@ -11,14 +12,14 @@
   // Texts: a plain string, or one per language { "en": "…", "de": "…" }.
   "id": "ludra",
   "name": "Sanctuary: Eternal Ludra",
-  "version": "2026-11-06c",
-  "zones": [600082],
+  "version": "2026-11-06d",
+  "zones": [600082, 600083],
   "notes": "Fusion reactor first (runners left/right only when the side reactors activate), then Rahu and Ketu in parallel (two groups of five), then Ludra with all ten.",
   "bosses": [
     {
       "id": "rahu",
       "name": "Isolation Specialist Rahu",
-      "npc": [2301006],
+      "npc": [2301006, 2300282],
       "triggers": [
         {
           "name": "Pull",
@@ -91,7 +92,7 @@
     {
       "id": "ketu",
       "name": "Abyssal Wings Ketu",
-      "npc": [2301007],
+      "npc": [2301007, 2300283],
       "triggers": [
         {
           "name": "Pull",
@@ -173,7 +174,7 @@
     {
       "id": "ludra",
       "name": "Eternal Ludra",
-      "npc": [2301014, 2090719],
+      "npc": [2301014, 2090719, 2300290],
       "resetAfter": 60,
       "triggers": [
         {
