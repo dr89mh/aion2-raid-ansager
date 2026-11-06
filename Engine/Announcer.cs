@@ -55,6 +55,10 @@ public sealed class Fight
     public long PullMs { get; }
     public long EndMs { get; internal set; }
     public string Outcome { get; internal set; } = "";
+    /// <summary>The boss died (as opposed to a reset/wipe, zone change, …).</summary>
+    public bool Won { get; internal set; }
+    /// <summary>The fight ended without a kill while still in the zone (wipe or reset).</summary>
+    public bool Reset { get; internal set; }
     public int Phase { get; internal set; } = 1;
     public double HpPct { get; internal set; } = double.NaN;
     public long LastActivityMs { get; internal set; }
@@ -141,7 +145,7 @@ public sealed class Announcer
     {
         lock (_gate)
         {
-            foreach (var f in _fights.ToList()) End(f, _now, "Mods neu geladen");
+            foreach (var f in _fights.ToList()) End(f, _now, L.T("mods reloaded", "Mods neu geladen"));
             _mods = mods;
         }
     }
@@ -174,7 +178,7 @@ public sealed class Announcer
                 case KillEvent k: OnDeath(k.TimeMs, k.Entity, "Tod"); break;
                 case GoneEvent g:
                     if (g.Flag == 3) OnDeath(g.TimeMs, g.Entity, "Tod");
-                    else if (g.Flag == 7 && FightOf(g.Entity) is { } gone) End(gone, g.TimeMs, "Boss verschwunden");
+                    else if (g.Flag == 7 && FightOf(g.Entity) is { } gone) End(gone, g.TimeMs, L.T("boss gone", "Boss verschwunden"));
                     break;
                 case BuffEvent b: OnBuff(b); break;
                 case BattleEvent b: OnBattle(b); break;
@@ -191,7 +195,7 @@ public sealed class Announcer
     private void OnZone(ZoneEvent z)
     {
         if (z.Zone == _zone) return;
-        foreach (var f in _fights.ToList()) End(f, z.TimeMs, "Zonenwechsel");
+        foreach (var f in _fights.ToList()) End(f, z.TimeMs, L.T("zone change", "Zonenwechsel"));
         _zone = z.Zone;
         var self = _self;
         var names = _ents.Where(kv => kv.Value.Player).ToList();
@@ -222,7 +226,7 @@ public sealed class Announcer
         {
             if (f.Entity == s.Entity) continue;
             if (s.Kind is 0x0C or 0x0D)
-                Record(f, s.TimeMs, "SPAWN", s.NpcCode, ent.Name, null, actor: s.Entity);
+                Record(f, s.TimeMs, "SPAWN", s.NpcCode, Label(ent), null, actor: s.Entity);
             foreach (var t in Active(f, "spawn"))
                 if (t.Npc.Contains(s.NpcCode)) Fire(f, t, s.TimeMs, new Ctx(0, s.Entity, 0, s.NpcCode));
         }
@@ -253,9 +257,9 @@ public sealed class Announcer
         var name = _data.SkillName(c.Skill);
         var known = matched || Covered(fight, c.Skill);
         Record(fight, c.TimeMs, "CAST", c.Skill, name, TargetName(c.Target), actor: c.Actor, target: c.Target,
-            caster: isBoss ? null : actor.Name ?? (actor.Npc != 0 ? $"NPC {actor.Npc}" : $"Entity {c.Actor}"), known: known);
+            caster: isBoss ? null : Label(actor) ?? $"Entity {c.Actor}", known: known);
         fight.OpenCasts[c.Skill] = c.TimeMs;
-        if (!known && (isBoss || actor.Npc != 0) && IsNpcSkill(c.Skill)) Unknown(fight, c, name, isBoss ? null : actor.Name);
+        if (!known && (isBoss || actor.Npc != 0) && IsNpcSkill(c.Skill)) Unknown(fight, c, name, isBoss ? null : Label(actor));
     }
 
     private void OnHit(HitEvent h)
@@ -281,7 +285,7 @@ public sealed class Announcer
         if (fight.Entity == h.Actor) Activity(fight, h.TimeMs);
         if (fight.OpenCasts.Remove(h.Skill, out var castAt))
             Record(fight, h.TimeMs, "HIT", h.Skill, _data.SkillName(h.Skill), TargetName(h.Target),
-                actor: h.Actor, target: h.Target, caster: fight.Entity == h.Actor ? null : actor.Name,
+                actor: h.Actor, target: h.Target, caster: fight.Entity == h.Actor ? null : Label(actor),
                 value: (h.TimeMs - castAt) / 1000.0);
         foreach (var t in Active(fight, "hit"))
             if (t.Skill.Contains(h.Skill) && (t.Npc.Count == 0 || t.Npc.Contains(actor.Npc)) && TargetOk(t, fight, h.Target))
@@ -304,7 +308,7 @@ public sealed class Announcer
         fight.HpPct = pct;
         if (!double.IsNaN(before) && before < 95 && pct >= 99.9)
         {
-            End(fight, h.TimeMs, "Reset (Boss wieder voll)");
+            End(fight, h.TimeMs, L.T("reset (boss back to full HP)", "Reset (Boss wieder voll)"), reset: true);
             return;
         }
         while (fight.HpStep - 5 >= pct && fight.HpStep > 0)
@@ -329,20 +333,22 @@ public sealed class Announcer
         if (_ents.TryGetValue(entity, out var dead) && dead.DeadAt == 0) dead.DeadAt = time;
         if (FightOf(entity) is { } fight)
         {
-            var say = fight.Def.OnKill ?? "{boss} besiegt";
+            var defeated = L.T("{boss} defeated", "{boss} besiegt");
+            var say = fight.Def.OnKill?.Get() ?? defeated;
             if (say.Length > 0) _out.Say(Format(say, fight, default), urgent: false);
-            Alert(Format("{boss} besiegt", fight, default), "#7CFC7C", time, 5);
-            End(fight, time, "Sieg");
+            Alert(Format(defeated, fight, default), "#7CFC7C", time, 5);
+            fight.Won = true;
+            End(fight, time, L.T("kill", "Sieg"));
             return;
         }
         if (_fights.Count == 0 || !_ents.TryGetValue(entity, out var ent)) return;
         foreach (var f in _fights)
         {
             if (ent.Player || entity == _self)
-                Record(f, time, "TOD", 0, entity == _self ? "du" : ent.Name, null, target: entity);
+                Record(f, time, "TOD", 0, entity == _self ? L.T("you", "du") : ent.Name, null, target: entity);
             else if (ent.Npc != 0)
             {
-                Record(f, time, "NPC-TOD", ent.Npc, ent.Name, null, target: entity);
+                Record(f, time, "NPC-TOD", ent.Npc, Label(ent), null, target: entity);
                 foreach (var t in Active(f, "death"))
                     if (t.Npc.Contains(ent.Npc)) Fire(f, t, time, new Ctx(0, entity, 0, ent.Npc));
             }
@@ -360,10 +366,10 @@ public sealed class Announcer
         {
             var onBoss = b.Target == f.Entity;
             if (fromNpc)
-                Record(f, b.TimeMs, "BUFF", b.Buff, onBoss ? "auf Boss" : null,
-                    $"{TargetName(b.Target) ?? $"Entity {b.Target}"} | Stapel {b.Stack}" +
+                Record(f, b.TimeMs, "BUFF", b.Buff, onBoss ? L.T("on boss", "auf Boss") : null,
+                    $"{TargetName(b.Target) ?? $"Entity {b.Target}"} | {L.T("stack", "Stapel")} {b.Stack}" +
                     (b.DurationMs > 0 ? $", {b.DurationMs / 1000.0:0.#} s" : "") +
-                    (b.SourceSkill != 0 ? $", aus {b.SourceSkill} {_data.SkillName(b.SourceSkill)}" : ""),
+                    (b.SourceSkill != 0 ? $", {L.T("from", "aus")} {b.SourceSkill} {_data.SkillName(b.SourceSkill)}" : ""),
                     actor: b.Caster, target: b.Target, value: b.SourceSkill);
             foreach (var t in Active(f, "buff"))
                 if (t.Buff.Contains(b.Buff) && b.Stack >= t.MinStack && TargetOk(t, f, b.Target))
@@ -423,8 +429,8 @@ public sealed class Announcer
                     && !_fights.Any(f => f.Def == d))
                 {
                     ent.Npc = d.Npc[0];
-                    ent.Name = d.Name;
-                    return StartFight(m, d, entity, ent.Npc, time, "PULL (erkannt an Fähigkeit)");
+                    ent.Name = _data.NpcName(d.Npc[0]) ?? d.Name;
+                    return StartFight(m, d, entity, ent.Npc, time, L.T("PULL (recognised by its skill)", "PULL (erkannt an Fähigkeit)"));
                 }
         }
         return null;
@@ -441,8 +447,8 @@ public sealed class Announcer
             foreach (var t in f.Def.Triggers)
                 if (t.On == "hp" && t.Below is { } below && below > f.HpPct + 2) f.Fired.Add(t);
         }
-        Record(f, time, "PULL", npc, def.Name, how == "PULL" ? null : how);
-        Alert($"{def.Name}: Kampf beginnt", "#FFFFFF", time, 3);
+        Record(f, time, "PULL", npc, BossName(f), how == "PULL" ? null : how);
+        Alert(L.T($"Pull: {BossName(f)}", $"{BossName(f)}: Kampf beginnt"), "#FFFFFF", time, 3);
         foreach (var t in Active(f, "pull")) Fire(f, t, time, default);
         return f;
     }
@@ -453,16 +459,16 @@ public sealed class Announcer
         f.BattleOffMs = null;
     }
 
-    private void End(Fight f, long time, string outcome)
+    private void End(Fight f, long time, string outcome, bool reset = false)
     {
         if (!_fights.Remove(f)) return;
         f.EndMs = time;
         f.Outcome = outcome;
+        f.Reset = reset;
         f.Bars.Clear();
         _delayed.RemoveAll(d => d.Fight == f);
         Record(f, time, "ENDE", 0, outcome, null);
-        if (outcome.StartsWith("Reset", StringComparison.Ordinal))
-            Alert($"{f.Def.Name}: {outcome}", "#C0C0C0", time, 4);
+        if (reset) Alert($"{BossName(f)}: {outcome}", "#C0C0C0", time, 4);
         try { FightEnded?.Invoke(f); }
         catch (IOException) { }
     }
@@ -509,27 +515,27 @@ public sealed class Announcer
 
     private void Run(Fight f, Trigger t, long time, Ctx ctx)
     {
-        Record(f, time, "TRIGGER", ctx.Skill, t.Name.Length > 0 ? t.Name : t.On, t.Say);
+        Record(f, time, "TRIGGER", ctx.Skill, t.Name.Length > 0 ? t.Name : t.On, t.Say?.Get());
         if (t.SetPhase is { } phase && phase != f.Phase)
         {
             f.Phase = phase;
             Record(f, time, "PHASE", 0, $"Phase {phase}", null);
         }
         if (t.CancelBar is { Length: > 0 } cancel)
-            f.Bars.RemoveAll(b => string.Equals(b.Def.Text, cancel, StringComparison.OrdinalIgnoreCase));
+            f.Bars.RemoveAll(b => b.Def.Text.Matches(cancel));
         if (t.Bar is { In: > 0 } bar)
         {
-            f.Bars.RemoveAll(b => b.Def == bar || string.Equals(b.Def.Text, bar.Text, StringComparison.OrdinalIgnoreCase));
+            f.Bars.RemoveAll(b => b.Def == bar || b.Def.Text.Matches(bar.Text.Get()));
             f.Bars.Add(new Bar
             {
-                Text = Format(bar.Text, f, ctx), EndMs = time + (long)(bar.In * 1000), TotalMs = (long)(bar.In * 1000),
+                Text = Format(bar.Text.Get(), f, ctx), EndMs = time + (long)(bar.In * 1000), TotalMs = (long)(bar.In * 1000),
                 Def = bar,
             });
         }
         var sound = t.Sound ?? (t.Say is not null ? "info" : "none");
         if (sound != "none") _out.Sound(sound);
-        if (t.Say is { Length: > 0 } say) _out.Say(Format(say, f, ctx), urgent: sound == "alarm");
-        var show = t.Show ?? t.Say;
+        if (t.Say?.Get() is { Length: > 0 } say) _out.Say(Format(say, f, ctx), urgent: sound == "alarm");
+        var show = (t.Show ?? t.Say)?.Get();
         if (show is { Length: > 0 })
             Alert(Format(show, f, ctx), t.Color ?? (sound == "alarm" ? "#FF5050" : "#FFD24A"), time, t.ShowSeconds);
     }
@@ -537,8 +543,8 @@ public sealed class Announcer
     private void Unknown(Fight f, CastEvent c, string? name, string? caster)
     {
         // Adds: only named skills on the overlay (their unnamed helper casts come every second); speech only for the boss.
-        if (caster is not null && name is null || GameData.IsAutoAttack(name) || GameData.IsGeneric(c.Skill)) return;
-        var label = (caster is not null ? caster + ": " : "") + (name ?? $"Fähigkeit {c.Skill}");
+        if (caster is not null && name is null || _data.IsAutoAttack(c.Skill) || GameData.IsGeneric(c.Skill)) return;
+        var label = (caster is not null ? caster + ": " : "") + (name ?? $"{L.T("Skill", "Fähigkeit")} {c.Skill}");
         var i = _unknown.FindIndex(u => u.Text == label);
         if (i >= 0)
         {
@@ -548,7 +554,7 @@ public sealed class Announcer
         _unknown.Add((label, c.TimeMs));
         if (_unknown.Count > 4) _unknown.RemoveAt(0);
         speech:
-        if (!Options.SayUnknown || caster is not null || name is null || GameData.IsAutoAttack(name)) return;
+        if (!Options.SayUnknown || caster is not null || name is null) return;
         if (f.LastUnknownSay.TryGetValue(c.Skill, out var last) && c.TimeMs - last < 20_000) return;
         if (c.TimeMs - _lastUnknownSayMs < 2_500) return;
         f.LastUnknownSay[c.Skill] = c.TimeMs;
@@ -560,9 +566,9 @@ public sealed class Announcer
     {
         if (!text.Contains('{')) return text;
         return text
-            .Replace("{boss}", f.Def.Name)
+            .Replace("{boss}", BossName(f))
             .Replace("{skill}", ctx.Skill != 0 ? _data.SkillName(ctx.Skill) ?? ctx.Skill.ToString() : "")
-            .Replace("{target}", ctx.Target == 0 ? "" : ctx.Target == _self ? "dich" : TargetName(ctx.Target) ?? "jemanden")
+            .Replace("{target}", ctx.Target == 0 ? "" : ctx.Target == _self ? L.T("you", "dich") : TargetName(ctx.Target) ?? L.T("someone", "jemanden"))
             .Replace("{stack}", ctx.Stack.ToString())
             .Replace("{hp}", double.IsNaN(f.HpPct) ? "?" : ((int)f.HpPct).ToString())
             .Replace("{npc}", ctx.Npc != 0 ? _data.NpcName(ctx.Npc) ?? ctx.Npc.ToString() : "")
@@ -572,9 +578,16 @@ public sealed class Announcer
     private string? TargetName(uint target)
     {
         if (target == 0) return null;
-        if (target == _self) return "du";
-        return _ents.TryGetValue(target, out var e) ? e.Name ?? (e.Npc != 0 ? $"NPC {e.Npc}" : null) : null;
+        if (target == _self) return L.T("you", "du");
+        return _ents.TryGetValue(target, out var e) ? Label(e) : null;
     }
+
+    /// <summary>Player name, or the NPC's name in the current language.</summary>
+    private string? Label(Ent e) =>
+        e.Player ? e.Name : e.Npc != 0 ? _data.NpcName(e.Npc) ?? e.Name ?? $"NPC {e.Npc}" : e.Name;
+
+    /// <summary>The boss name in the current language (game data), else the mod's name.</summary>
+    private string BossName(Fight f) => _data.NpcName(f.Npc) ?? f.Def.Name;
 
     private static bool IsNpcSkill(uint skill) => skill is >= 1_000_000 and <= 9_999_999 and not (>= 3_000_000 and <= 3_099_999);
 
@@ -609,7 +622,7 @@ public sealed class Announcer
                 if (now - f.LastActivityMs > f.Def.ResetAfter * 1000 ||
                     f.BattleOffMs is { } off && now - off > 8_000 && now - f.LastActivityMs > 8_000)
                 {
-                    End(f, now, "Reset (kein Kampf mehr)");
+                    End(f, now, L.T("reset (no more combat)", "Reset (kein Kampf mehr)"), reset: true);
                     continue;
                 }
                 for (var i = 0; i < f.Bars.Count; i++)
@@ -619,13 +632,13 @@ public sealed class Announcer
                     if (!b.Warned && b.Def.Warn > 0 && left <= b.Def.Warn * 1000)
                     {
                         b.Warned = true;
-                        var say = b.Def.WarnSay ?? "{text} in {warn}";
+                        var say = b.Def.WarnSay?.Get() ?? "{text} in {warn}";
                         if (say.Length > 0)
                             _out.Say(say.Replace("{text}", b.Text).Replace("{warn}", ((int)Math.Round(b.Def.Warn)).ToString()), false);
                     }
                     if (left <= 0)
                     {
-                        if (b.Def.EndSay is { Length: > 0 } end) _out.Say(end.Replace("{text}", b.Text), urgent: true);
+                        if (b.Def.EndSay?.Get() is { Length: > 0 } end) _out.Say(end.Replace("{text}", b.Text), urgent: true);
                         f.Bars.RemoveAt(i--);
                     }
                 }
@@ -642,8 +655,8 @@ public sealed class Announcer
         {
             if (now > _now) _now = now;
             _out.Sound("alarm");
-            _out.Say("Test: Raid-Ansager ist bereit", urgent: true);
-            Alert("TEST – Raid-Ansager bereit", "#FF5050", _now, 4);
+            _out.Say(L.T("Test: raid announcer is ready", "Test: Raid-Ansager ist bereit"), urgent: true);
+            Alert(L.T("TEST – raid announcer ready", "TEST – Raid-Ansager bereit"), "#FF5050", _now, 4);
         }
     }
 
@@ -653,7 +666,7 @@ public sealed class Announcer
         {
             var now = _now;
             return new OverlayState(
-                _fights.Select(f => new BossView(f.Def.Name, f.HpPct, f.Phase, (now - f.PullMs) / 1000.0)).ToList(),
+                _fights.Select(f => new BossView(BossName(f), f.HpPct, f.Phase, (now - f.PullMs) / 1000.0)).ToList(),
                 _alerts.Select(a => new AlertView(a.Text, a.Color, (now - a.At) / 1000.0, a.Seconds)).ToList(),
                 _fights.SelectMany(f => f.Bars).OrderBy(b => b.EndMs)
                     .Select(b => new BarView(b.Text, Math.Max(0, (b.EndMs - now) / 1000.0), b.TotalMs / 1000.0,

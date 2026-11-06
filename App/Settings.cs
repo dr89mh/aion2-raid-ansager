@@ -13,6 +13,8 @@ public sealed class Settings
     /// <summary>Speech rate −10…10; a bit faster than normal suits callouts.</summary>
     public int Rate { get; set; } = 2;
     public string? Voice { get; set; }
+    /// <summary>"en" (default) or "de": callouts, skill/boss names, menu and overlay.</summary>
+    public string Language { get; set; } = "en";
     public string Role { get; set; } = "alle";
     public bool SayUnknown { get; set; } = true;
     /// <summary>Also dungeon bosses without a mod (HP line, skill names, fight log).</summary>

@@ -1,163 +1,182 @@
 {
-  // Raid-Ansager Boss-Mod: Weihestätte des Ewigen Ludra (Aion 2 Global, Raid-Zone 600082)
-  // Stand 2026-11-06, VOR dem ersten eigenen Mitschnitt:
-  //  - Boss-NPC-Codes stammen aus den Spieldaten (sicher).
-  //  - HP-Schwellen stammen aus Guides zur Early-Access-/KR-Version (NC hat die Mechaniken zur Rückkehr
-  //    am 04.11.26 überarbeitet, also unsicher).
-  //  - Skill-Codes 1803000–1803040 sind Ludra-Fähigkeiten laut Spieldaten, die Zuordnung zur Mechanik ist geraten
-  //    ("verified": false). Alles andere sagt der Lernmodus mit dem Spielnamen der Fähigkeit an.
-  // Nach dem ersten Raid: "RaidAnsager analyse <mitschnitt.pcapng>" ausführen und diese Datei aus dem Entwurf ergänzen.
+  // Raid Announcer boss mod: Sanctuary of Eternal Ludra (Aion 2 Global, raid zone 600082)
+  // State 2026-11-06, BEFORE our first own recording:
+  //  - Boss NPC codes come from the game data (certain).
+  //  - HP thresholds come from guides for the Early Access / KR version (NC reworked the mechanics for the return on
+  //    2026-11-04, so uncertain).
+  //  - Skill codes 1803000–1803040 are Ludra skills according to the game data; which mechanic they are is a guess
+  //    ("verified": false). Everything else is read out by name in learning mode.
+  // After the first raid: run "RaidAnsager analyse <recording.pcapng>" and extend this file from the draft.
+  // Texts: a plain string, or one per language { "en": "…", "de": "…" }.
   "id": "ludra",
-  "name": "Weihestätte: Ewiger Ludra",
-  "version": "2026-11-06",
+  "name": "Sanctuary: Eternal Ludra",
+  "version": "2026-11-06b",
   "zones": [600082],
-  "notes": "Rahu und Ketu laufen laut Guides parallel (zwei Fünfergruppen), Ludra danach mit allen.",
+  "notes": "According to guides Rahu and Ketu run in parallel (two groups of five), then Ludra with everyone.",
   "bosses": [
     {
       "id": "rahu",
-      "name": "Rahu der Isolation",
+      "name": "Isolation Specialist Rahu",
       "npc": [2301006],
       "triggers": [
         {
           "name": "Pull",
           "on": "pull",
-          "say": "Rahu. Purpurkreis immer weitergeben, drei Pfützen sind ein Wipe",
-          "show": "RAHU – Purpurkreis weitergeben!",
+          "say": {
+            "en": "Rahu. Always pass on the purple circle, three puddles wipe the raid",
+            "de": "Rahu. Purpurkreis immer weitergeben, drei Pfützen sind ein Wipe"
+          },
+          "show": { "en": "RAHU – pass on the purple circle!", "de": "RAHU – Purpurkreis weitergeben!" },
           "sound": "info"
         },
         {
-          "name": "Arena-Teilung (~50 %)",
+          "name": "Arena split (~50 %)",
           "on": "hp",
           "below": 52,
-          "say": "Gleich Arena-Teilung. Zusammen in den richtigen Abschnitt",
-          "show": "ARENA-TEILUNG – zusammen bleiben",
+          "say": {
+            "en": "Arena split soon. Move together into the right section",
+            "de": "Gleich Arena-Teilung. Zusammen in den richtigen Abschnitt"
+          },
+          "show": { "en": "ARENA SPLIT – stay together", "de": "ARENA-TEILUNG – zusammen bleiben" },
           "sound": "alarm",
           "verified": false,
-          "note": "Guide (timesaver.gg): Teilung bei etwa der Hälfte"
+          "note": "Guide (timesaver.gg): split at about half health"
         }
       ]
     },
     {
       "id": "ketu",
-      "name": "Abgrundsflügel Ketu",
+      "name": "Abyssal Wings Ketu",
       "npc": [2301007],
       "triggers": [
         {
           "name": "Pull",
           "on": "pull",
-          "say": "Ketu. Seelensteine nicht zerstören, für die Heiler aufheben",
-          "show": "KETU – Seelensteine aufheben",
+          "say": {
+            "en": "Ketu. Do not break the soul stones, keep them for the healers",
+            "de": "Ketu. Seelensteine nicht zerstören, für die Heiler aufheben"
+          },
+          "show": { "en": "KETU – keep the soul stones", "de": "KETU – Seelensteine aufheben" },
           "sound": "info"
         },
         {
-          "name": "Blick-Phase (~50 %)",
+          "name": "Gaze phase (~50 %)",
           "on": "hp",
           "below": 52,
-          "say": "Blick-Phase. Rotes Auge anschauen, blaues Auge wegdrehen",
-          "show": "ROT ANSCHAUEN – BLAU WEGDREHEN",
+          "say": {
+            "en": "Gaze phase. Face the red eye, turn away from the blue eye",
+            "de": "Blick-Phase. Rotes Auge anschauen, blaues Auge wegdrehen"
+          },
+          "show": { "en": "FACE RED – TURN AWAY FROM BLUE", "de": "ROT ANSCHAUEN – BLAU WEGDREHEN" },
           "color": "#FF7070",
           "sound": "alarm",
           "verified": false,
-          "note": "Guide (expcarry.com): Rot/Blau-Blick ab etwa 50 %"
+          "note": "Guide (expcarry.com): red/blue gaze from about 50 %"
         }
       ]
     },
     {
       "id": "ludra",
-      "name": "Ludra der Ewigkeit",
+      "name": "Eternal Ludra",
       "npc": [2301014, 2090719],
       "resetAfter": 60,
       "triggers": [
         {
           "name": "Pull",
           "on": "pull",
-          "say": "Ludra. Rote Kugel nur mit Block oder Unverwundbarkeit",
-          "show": "LUDRA – Rote Kugel: Block/Unverwundbar",
+          "say": {
+            "en": "Ludra. Red orb only with block or invincibility",
+            "de": "Ludra. Rote Kugel nur mit Block oder Unverwundbarkeit"
+          },
+          "show": { "en": "LUDRA – red orb: block / invincible", "de": "LUDRA – Rote Kugel: Block/Unverwundbar" },
           "sound": "info"
         },
         {
           "name": "Bingo 1 (~50 %)",
           "on": "hp",
           "below": 53,
-          "say": "Gleich Bingo. Sicheres Feld suchen und ansagen",
-          "show": "BINGO – sicheres Feld suchen",
+          "say": { "en": "Bingo soon. Find the safe tile and call it", "de": "Gleich Bingo. Sicheres Feld suchen und ansagen" },
+          "show": { "en": "BINGO – find the safe tile", "de": "BINGO – sicheres Feld suchen" },
           "color": "#FFB000",
           "sound": "alarm",
           "verified": false,
-          "note": "Guides: erstes Bingo bei etwa 50 %"
+          "note": "Guides: first bingo at about 50 %"
         },
         {
-          "name": "Rot/Blau (~35 %)",
+          "name": "Red/blue (~35 %)",
           "on": "hp",
           "below": 37,
-          "say": "Rot und Blau getrennt halten",
-          "show": "ROT / BLAU TRENNEN",
+          "say": { "en": "Keep red and blue apart", "de": "Rot und Blau getrennt halten" },
+          "show": { "en": "KEEP RED / BLUE APART", "de": "ROT / BLAU TRENNEN" },
           "color": "#FF7070",
           "sound": "alarm",
           "verified": false,
-          "note": "Guide (timesaver.gg): Rot/Blau-Verbindungen ab 35 %"
+          "note": "Guide (timesaver.gg): red/blue tethers from 35 %"
         },
         {
           "name": "Bingo 2 (~25 %)",
           "on": "hp",
           "below": 28,
-          "say": "Gleich zweites Bingo",
-          "show": "BINGO 2 – sicheres Feld suchen",
+          "say": { "en": "Second bingo soon", "de": "Gleich zweites Bingo" },
+          "show": { "en": "BINGO 2 – find the safe tile", "de": "BINGO 2 – sicheres Feld suchen" },
           "color": "#FFB000",
           "sound": "alarm",
           "verified": false,
-          "note": "Guides: zweites Bingo bei etwa 25 %"
+          "note": "Guides: second bingo at about 25 %"
         },
         {
-          "name": "Donnerzone",
+          "name": "Thunder zone",
           "on": "cast",
           "skill": [1803030],
-          "say": "Donnerzone. Kreis in deiner Farbe, erst spät rein",
-          "show": "DONNERZONE – eigene Farbe, spät rein",
+          "say": {
+            "en": "Thunder zone. Circle of your colour, step in late",
+            "de": "Donnerzone. Kreis in deiner Farbe, erst spät rein"
+          },
+          "show": { "en": "THUNDER ZONE – own colour, step in late", "de": "DONNERZONE – eigene Farbe, spät rein" },
           "sound": "alarm",
           "cooldown": 8,
           "verified": false,
-          "note": "Skill 1803030 'Donnerzone' (EN: Ure's Area) laut Spieldaten; Guide (expcarry.com): 'Thunder Zone' mit Farbkreisen"
+          "note": "Skill 1803030 'Ure's Area' / 'Donnerzone' in the game data; guide (expcarry.com): 'Thunder Zone' with coloured circles"
         },
         {
-          "name": "Ludras Prüfung",
+          "name": "Ludra's Trial",
           "on": "cast",
           "skill": [1803040],
-          "say": "Ludras Prüfung",
-          "show": "LUDRAS PRÜFUNG",
+          "say": { "en": "Ludra's Trial", "de": "Ludras Prüfung" },
+          "show": { "en": "LUDRA'S TRIAL", "de": "LUDRAS PRÜFUNG" },
           "sound": "alarm",
           "cooldown": 8,
           "verified": false,
-          "note": "Skill 1803040 laut Spieldaten, Mechanik unbekannt (Bingo?)"
+          "note": "Skill 1803040 in the game data, mechanic unknown (bingo?)"
         },
         {
-          "name": "Purpurner Donnerschlag",
+          "name": "Purple Bolt",
           "on": "cast",
           "skill": [1803010],
-          "say": "Purpurner Donnerschlag",
+          "say": { "en": "Purple bolt", "de": "Purpurner Donnerschlag" },
           "sound": "info",
           "verified": false,
-          "note": "Skill 1803010 laut Spieldaten"
+          "note": "Skill 1803010 in the game data"
         },
         {
-          "name": "Kondensiertes Kraftfeld",
+          "name": "Condensed Forcefield",
           "on": "cast",
           "skill": [1803020],
-          "say": "Kraftfeld",
-          "show": "KONDENSIERTES KRAFTFELD",
+          "say": { "en": "Forcefield", "de": "Kraftfeld" },
+          "show": { "en": "CONDENSED FORCEFIELD", "de": "KONDENSIERTES KRAFTFELD" },
           "sound": "info",
           "verified": false,
-          "note": "Skill 1803020 laut Spieldaten"
+          "note": "Skill 1803020 in the game data"
         },
         {
-          "name": "Abgrundenergie-Zufuhr",
+          "name": "Supply Eldritch Energy",
           "on": "cast",
           "skill": [1803000],
-          "say": "Abgrundenergie",
-          "show": "ABGRUNDENERGIE-ZUFUHR",
+          "say": { "en": "Eldritch energy", "de": "Abgrundenergie" },
+          "show": { "en": "SUPPLY ELDRITCH ENERGY", "de": "ABGRUNDENERGIE-ZUFUHR" },
           "sound": "info",
           "verified": false,
-          "note": "Skill 1803000 laut Spieldaten (EN: Supply Eldritch Energy), vielleicht der Reaktor"
+          "note": "Skill 1803000 in the game data, maybe the reactor"
         }
       ]
     }

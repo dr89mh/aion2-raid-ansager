@@ -72,14 +72,17 @@ public static class FightReport
     {
         var sb = new StringBuilder();
         var start = DateTimeOffset.FromUnixTimeMilliseconds(f.PullMs).ToLocalTime();
-        sb.AppendLine("Raid-Ansager – Kampfprotokoll");
-        sb.AppendLine($"Boss:     {f.Def.Name} (NPC {f.Npc}, Entity {f.Entity})");
+        sb.AppendLine(L.T("Raid Announcer – fight log", "Raid-Ansager – Kampfprotokoll"));
+        sb.AppendLine($"Boss:     {Boss(f, data)} (NPC {f.Npc}, Entity {f.Entity})");
         sb.AppendLine($"Zone:     {f.Zone}    Mod: {f.Mod.Id} {f.Mod.Version}");
-        sb.AppendLine($"Beginn:   {start:dd.MM.yyyy HH:mm:ss}    Dauer: {Clock((f.EndMs - f.PullMs) / 1000.0)}    Ergebnis: {f.Outcome}");
+        sb.AppendLine(L.T(
+            $"Start:    {start:yyyy-MM-dd HH:mm:ss}    Duration: {Clock((f.EndMs - f.PullMs) / 1000.0)}    Result: {f.Outcome}",
+            $"Beginn:   {start:dd.MM.yyyy HH:mm:ss}    Dauer: {Clock((f.EndMs - f.PullMs) / 1000.0)}    Ergebnis: {f.Outcome}"));
         sb.AppendLine();
-        sb.AppendLine("Fähigkeiten (Casts = Einsätze, mehrere Pakete innerhalb 1 s zählen als einer):");
+        sb.AppendLine(L.T("Skills (casts = uses; several packets within 1 s count as one):",
+            "Fähigkeiten (Casts = Einsätze, mehrere Pakete innerhalb 1 s zählen als einer):"));
         sb.AppendLine(SkillTable(Skills([f], data)));
-        sb.AppendLine("Zeitleiste (Zeit ab Pull, Boss-HP):");
+        sb.AppendLine(L.T("Timeline (time since pull, boss HP):", "Zeitleiste (Zeit ab Pull, Boss-HP):"));
         foreach (var r in f.Records)
         {
             var sec = (r.TimeMs - f.PullMs) / 1000.0;
@@ -88,13 +91,14 @@ public static class FightReport
             {
                 "CAST" => $"CAST    {(r.Caster is { } c ? $"[{c}] " : "")}{r.Code} {r.Name ?? "?"}{(r.Known ? " ✓" : "")}" +
                           (r.Detail is { } d ? $"  → {d}" : ""),
-                "HIT" => $"  Treffer {(r.Caster is { } c2 ? $"[{c2}] " : "")}{r.Code} {r.Name ?? "?"}" +
-                         (r.Detail is { } d2 ? $"  → {d2}" : "") + $"  ({r.Value:0.0} s nach Cast)",
+                "HIT" => $"  {L.T("hit", "Treffer")} {(r.Caster is { } c2 ? $"[{c2}] " : "")}{r.Code} {r.Name ?? "?"}" +
+                         (r.Detail is { } d2 ? $"  → {d2}" : "") + $"  ({r.Value:0.0} s {L.T("after the cast", "nach Cast")})",
                 "BUFF" => $"BUFF    {r.Code} {r.Name}" + (r.Detail is { } d3 ? $"  → {d3}" : ""),
                 "SPAWN" => $"SPAWN   NPC {r.Code} {r.Name ?? "?"} (Entity {r.Actor})",
-                "NPC-TOD" => $"NPC-TOD {r.Code} {r.Name ?? "?"}",
-                "TOD" => $"TOD     {r.Name ?? $"Spieler {r.Target}"}",
-                "TRIGGER" => $">>> ANSAGE {r.Name}" + (r.Detail is { } d4 ? $": {d4}" : ""),
+                "NPC-TOD" => $"{L.T("NPC-DIED", "NPC-TOD")} {r.Code} {r.Name ?? "?"}",
+                "TOD" => $"{L.T("DIED   ", "TOD    ")} {r.Name ?? $"{L.T("player", "Spieler")} {r.Target}"}",
+                "TRIGGER" => $">>> {L.T("CALLOUT", "ANSAGE")} {r.Name}" + (r.Detail is { } d4 ? $": {d4}" : ""),
+                "ENDE" => $"{L.T("END", "ENDE")}    {r.Name}",
                 _ => $"{r.Type,-7} {(r.Code != 0 ? r.Code + " " : "")}{r.Name}" + (r.Detail is { } d5 ? $"  {d5}" : ""),
             };
             sb.AppendLine($"{Clock(sec),8}  {hp}  {what}");
@@ -105,7 +109,8 @@ public static class FightReport
     public static string SkillTable(List<SkillStat> skills)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("  Code      Name                              Casts  erster   Abstand min/Median/max   Vorlauf  HP bei Casts");
+        sb.AppendLine(L.T("  Code      Name                              Casts  first    gap min/median/max       lead     HP at casts",
+                          "  Code      Name                              Casts  erster   Abstand min/Median/max   Vorlauf  HP bei Casts"));
         foreach (var s in skills)
         {
             var name = (s.Caster is null ? "" : $"[{s.Caster}] ") + (s.Name ?? "?") + (s.Known ? " ✓" : "");
@@ -135,20 +140,21 @@ public static class FightReport
         foreach (var group in fights.GroupBy(f => f.Def.Id))
         {
             var def = group.First().Def;
-            var boss = new BossDef { Id = def.Id, Name = def.Name, Npc = def.Npc.ToList() };
+            var boss = new BossDef { Id = def.Id, Name = Boss(group.First(), data), Npc = def.Npc.ToList() };
             foreach (var s in Skills(group, data))
             {
-                if (GameData.IsAutoAttack(s.Name) || GameData.IsGeneric(s.Code)) continue;
+                if (data.IsAutoAttack(s.Code) || GameData.IsGeneric(s.Code)) continue;
                 if (s.Caster is not null && s.Name is null) continue; // unnamed helper casts of adds/effects
                 var series = s.Intervals.Count >= 8 && s.Median(s.Intervals) < 5;
-                var label = s.Name ?? $"Fähigkeit {s.Code}";
+                var label = s.Name ?? $"{L.T("Skill", "Fähigkeit")} {s.Code}";
+                string? en = data.SkillName(s.Code, "en"), de = data.SkillName(s.Code, "de");
                 var t = new Trigger
                 {
                     Name = (s.Caster is null ? "" : s.Caster + ": ") + label,
                     On = "cast",
                     Skill = { s.Code },
-                    Say = s.Name is null ? null : s.Name,
-                    Show = label.ToUpper(De),
+                    Say = en is null && de is null ? null : LocalText.Of(en, de),
+                    Show = LocalText.Of((en ?? $"Skill {s.Code}").ToUpperInvariant(), (de ?? $"Fähigkeit {s.Code}").ToUpper(De)),
                     Cooldown = series ? 20 : 3,
                     Note = $"{s.Casts}× in {s.Pulls} Pull(s), erster nach {Clock(s.Median(s.First))}" +
                            (s.Intervals.Count > 0 ? $", Abstand {s.Intervals.Min():0}–{s.Intervals.Max():0} s (Median {s.Median(s.Intervals):0})" : "") +
@@ -157,7 +163,7 @@ public static class FightReport
                 if (series) t.Note += "; kommt in Serien → nur einmal je 20 s";
                 else if (Regular(s) is { } every)
                 {
-                    t.Bar = new BarDef { Text = label, In = Math.Round(every, 1), Warn = 5 };
+                    t.Bar = new BarDef { Text = LocalText.Of(en ?? label, de ?? label), In = Math.Round(every, 1), Warn = 5 };
                     t.Note += $"; regelmäßig alle {every:0.0} s → Balken";
                 }
                 boss.Triggers.Add(t);
@@ -179,6 +185,9 @@ public static class FightReport
     }
 
     public static string DraftJson(BossMod mod) => JsonSerializer.Serialize(mod, ModLoader.Compact);
+
+    /// <summary>The boss name in the current language.</summary>
+    public static string Boss(Fight f, GameData data) => data.NpcName(f.Npc) ?? f.Def.Name;
 
     private static readonly JsonSerializerOptions Compact = new(ModLoader.Json) { WriteIndented = false };
 
@@ -217,7 +226,7 @@ public sealed class FightLogWriter
         if ((f.EndMs - f.PullMs) / 1000.0 < MinSeconds && f.Records.All(r => r.Type != "TRIGGER")) return;
         Directory.CreateDirectory(_dir);
         var start = DateTimeOffset.FromUnixTimeMilliseconds(f.PullMs).ToLocalTime();
-        var safe = string.Concat(f.Def.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) || c == ' ' ? '_' : c));
+        var safe = string.Concat(FightReport.Boss(f, _data).Select(c => Path.GetInvalidFileNameChars().Contains(c) || c == ' ' ? '_' : c));
         var stem = Path.Combine(_dir, $"{start:yyyyMMdd_HHmmss}_{safe}");
         File.WriteAllText(stem + ".txt", FightReport.Text(f, _data), new UTF8Encoding(true));
         File.WriteAllLines(stem + ".jsonl", FightReport.Jsonl(f));

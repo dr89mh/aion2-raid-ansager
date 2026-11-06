@@ -1,69 +1,88 @@
-# Raid-Ansager für Aion 2
+# Raid Announcer for Aion 2
 
-Sagt in **Dungeons und Raids** an, was der Boss gerade macht: per Sprache, Warnton und Text über dem Spiel, mit
-Boss-HP und Countdown-Balken für Fähigkeiten, die regelmäßig kommen. Er liest den Netzwerkverkehr von Aion 2 nur mit
-(Npcap, wie Wireshark) und verändert nichts am Spiel.
+**Deutsch:** [LIESMICH.md](LIESMICH.md)
 
-![Overlay mit Boss-HP, Ansage und Countdown](docs/overlay.png)
+Calls out what the boss is doing in **dungeons and raids**: by voice, warning tone and text on top of the game, with
+boss HP and countdown bars for skills that come at regular intervals. It only reads the network traffic of Aion 2
+(Npcap, like Wireshark) and changes nothing in the game.
 
-- **Jeder Dungeon-Boss:** Seine Fähigkeiten werden mit dem Spielnamen vorgelesen, sobald er sie beginnt
-  (z. B. „Drana-Welle“, „Orbwurf“).
-- **Bosse mit Boss-Mod**, zuerst der Raid **Ludra**: eigene Ansagen, Phasen nach HP, Countdown („… in 5“), Ansagen je
-  Rolle (Tank, Heiler, DD).
-- Kampfprotokoll zu jedem Pull, daraus lassen sich neue Boss-Mods bauen.
+![Overlay with boss HP, callout and countdown](docs/overlay.png)
 
-> **Achtung:** Laut einem anderen Tool-Autor stuft der NCSOFT-Support Software, die Spieldaten mitliest, als Verstoß
-> gegen die Nutzungsbedingungen ein. Die Nutzung erfolgt **auf eigenes Risiko**.
+- **Every dungeon boss:** its skills are read out by their in-game name as soon as it starts them
+  (e.g. "Drana Wave", "Explosive Crystal").
+- **Bosses with a boss mod**, first of all the raid **Ludra**: own callouts, phases by HP, countdowns ("… in 5"),
+  callouts per role (tank, healer, DPS).
+- **English or German** (menu "Language / Sprache"): callouts, skill and boss names, menu and overlay. English is the
+  default.
+- A fight log for every pull, which new boss mods can be built from.
+
+> **Warning:** According to another tool author, NCSOFT support considers software that reads game data a violation of
+> the terms of service. **Use at your own risk.**
 
 ## Download
 
-1. [**Npcap**](https://npcap.com/#download) installieren (Standardoptionen).
-2. Unter [**Releases**](../../releases/latest) die Datei `RaidAnsager.exe` herunterladen und starten. Eine Installation
-   ist nicht nötig, .NET ist enthalten. Bei der SmartScreen-Warnung: *Weitere Informationen → Trotzdem ausführen*.
-3. Das Lautsprecher-Symbol unten rechts öffnet per Rechtsklick die Einstellungen.
-   **Strg+Alt+O** verschiebt das Overlay, **Strg+Alt+M** schaltet stumm, **Strg+Alt+T** spielt eine Test-Ansage.
+1. Install [**Npcap**](https://npcap.com/#download) (default options; leave "Restrict Npcap driver's access to
+   Administrators only" unticked).
+2. Download `RaidAnsager.exe` from [**Releases**](../../releases/latest) and start it. No installation, .NET is
+   included. If SmartScreen warns: *More info → Run anyway* (the file is not signed).
+3. Right-click the speaker icon at the bottom right for the settings.
+   **Ctrl+Alt+O** moves the overlay, **Ctrl+Alt+M** mutes, **Ctrl+Alt+T** plays a test callout.
 
-Aion 2 im Fenster- oder randlosen Modus spielen, sonst liegt das Overlay unter dem Spiel. Die Ansagen hört man
-trotzdem. Die vollständige Anleitung steht in der **[LIESMICH](LIESMICH.md)**.
+Play Aion 2 in windowed or borderless mode, otherwise the overlay stays behind the game (the voice still works).
 
-## Boss-Mods
+## Settings (right-click on the icon)
 
-Wie Ansagen für einen Boss aufgebaut sind, steht in [MODS.md](MODS.md). Die eingebaute Ludra-Mod liegt unter
-[`mods/ludra.json`](mods/ludra.json). Ihre HP-Schwellen stammen noch aus Guides zur alten Version und werden nach den
-ersten Raidabenden anhand echter Mitschnitte überarbeitet.
+| Item | Effect |
+|---|---|
+| Language / Sprache | English or Deutsch; a voice of that language is picked automatically |
+| My role | Tank, healer or DPS: callouts meant only for another role are skipped |
+| All dungeon bosses (also without a mod) | off = only bosses with a mod (Ludra) |
+| Read out unknown boss skills | the learning mode; turn it off if it talks too much (HP and overlay stay) |
+| Voice, volume, speech rate, overlay size, warning tones | |
+| Save raid recordings | records only in raid zones with a mod, so the callouts can be improved; files stay on your PC |
+| Open fight logs | a readable log with timeline for every pull |
 
-## Selbst bauen
+If something goes wrong, the file `%APPDATA%\RaidAnsager\fehler.log` helps (paste the path into the Explorer address
+bar).
+
+## Boss mods
+
+How callouts for a boss are written is described in [MODS.md](MODS.md) (German). The built-in Ludra mod is
+[`mods/ludra.json`](mods/ludra.json). Texts can be given per language (`{ "en": "…", "de": "…" }`). Its HP thresholds
+still come from guides for the old version and will be reworked from real recordings after the first raid nights.
+
+## Building
 
 ```
 git clone --recurse-submodules https://github.com/dr89mh/aion2-raid-ansager.git
 cd aion2-raid-ansager
 dotnet build -c Release     # bin\Release\net10.0-windows\RaidAnsager.exe
-publish.cmd                 # dist\RaidAnsager.exe (eine Datei, .NET enthalten)
+publish.cmd                 # dist\RaidAnsager.exe (single file, .NET included)
 ```
 
-Voraussetzung: .NET 10 SDK. Mitlesen, TCP und Framing kommen aus dem Kern des
-[Cube Radar](https://github.com/dr89mh/aion2-cube-radar) (Submodul `external/aion2-cube-radar`).
+Requires the .NET 10 SDK. Capture, TCP and framing come from the core of
+[Cube Radar](https://github.com/dr89mh/aion2-cube-radar) (submodule `external/aion2-cube-radar`).
 
-Befehle für die Auswertung (Npcap nötig):
+Tools for analysis (need Npcap; `--lang en|de` sets the language for one run):
 
-| Befehl | Wirkung |
+| Command | Effect |
 |---|---|
-| `RaidAnsager analyse <aufnahme.pcapng …> [--out ordner]` | Boss-Kämpfe auswerten: Protokoll je Pull, Fähigkeiten-Tabelle (Abstände, HP, Vorlauf), Mod-Entwurf |
-| `RaidAnsager replay <aufnahme.pcapng> [--speed 4]` | Aufnahme mit Overlay und Sprache abspielen |
-| `RaidAnsager vorschau <aufnahme.pcapng> [--mod datei] [--alle]` | ohne Ton: Ansageliste und Overlay-Bilder schreiben |
-| `RaidAnsager pruefen` | Boss-Mods laden und prüfen |
+| `RaidAnsager analyse <recording.pcapng …> [--out folder]` | boss fights: log per pull, skill table (gaps, HP, lead time), draft mod |
+| `RaidAnsager replay <recording.pcapng> [--speed 4]` | play a recording with overlay and voice |
+| `RaidAnsager vorschau <recording.pcapng> [--mod file] [--alle]` | no sound: list of callouts and overlay images |
+| `RaidAnsager pruefen` | load and check the boss mods |
 
-| Pfad | Inhalt |
+| Path | Content |
 |---|---|
-| `Protocol/CombatDecoder.cs` | Frames → Ereignisse: Cast `02 38`, Treffer `04 38`/`05 38`, HP `00 8D`, Buff `2A 38`/`2B 38`, Spawn `41 36`, Tod `04 8D`, Zone `01 40` |
-| `Engine/Announcer.cs` | Kampferkennung (Pull, Sieg, Reset), Trigger, Phasen, Balken, Lernmodus |
-| `Engine/BossMod.cs` | Mod-Format und Laden (eingebaut + Ordner, höchste Version gewinnt) |
-| `Analysis/` | Kampfprotokolle, Statistik, Mod-Entwurf, Befehle |
-| `App/` | Live/Wiedergabe, Overlay, Sprache, Tray, Einstellungen |
-| `data/` | deutsche NPC- und Skillnamen, erzeugt mit `tools/make_data.py` |
+| `Protocol/CombatDecoder.cs` | frames → events: cast `02 38`, hit `04 38`/`05 38`, HP `00 8D`, buff `2A 38`/`2B 38`, spawn `41 36`, death `04 8D`, zone `01 40` |
+| `Engine/Announcer.cs` | fight detection (pull, kill, reset), triggers, phases, bars, learning mode |
+| `Engine/BossMod.cs`, `Engine/Lang.cs` | mod format and loading (built-in + folders, highest version wins), languages |
+| `Analysis/` | fight logs, statistics, draft mod, commands |
+| `App/` | live/replay, overlay, voice, tray, settings |
+| `data/` | English and German NPC and skill names, built with `tools/make_data.py` |
 
-## Lizenz
+## License
 
-GPL-3.0. Die NPC- und Skilldaten und Teile des Protokollwissens stammen aus
-[cyberbadger6969/aion2-dps-meter](https://github.com/cyberbadger6969/aion2-dps-meter) (GPL-3.0). Weitere Paketlayouts
-stammen aus HamMeter-Aion2 und aion2dps (TheLoop705). Spielinhalte und Namen gehören NCSOFT.
+GPL-3.0. NPC and skill data and parts of the protocol knowledge come from
+[cyberbadger6969/aion2-dps-meter](https://github.com/cyberbadger6969/aion2-dps-meter) (GPL-3.0). Further packet layouts
+come from HamMeter-Aion2 and aion2dps (TheLoop705). Game content and names belong to NCSOFT.

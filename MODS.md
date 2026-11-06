@@ -51,6 +51,11 @@ neuere Dateien liegen in `%APPDATA%\RaidAnsager\mods` oder in `mods\` neben der 
 | `verified` | `false` = Skill-ID noch nicht im eigenen Mitschnitt gesehen. Nur geprüfte Trigger erkennen einen Boss beim Einstieg mitten im Kampf |
 | `note` | Notiz, wird nicht angesagt |
 
+**Sprachen:** `say`, `show`, `onKill` und die Texte in `bar` dürfen ein einfacher Text sein (gilt für jede Sprache) oder
+ein Objekt je Sprache: `"say": { "en": "Spread out", "de": "Verteilen" }`. Fehlt die eingestellte Sprache, wird der
+einfache Text, dann Englisch genommen. Bossnamen kommen automatisch aus den Spieldaten der eingestellten Sprache, `name`
+ist nur die Rückfalllösung. Der Mod-Entwurf aus `analyse` schreibt die Fähigkeitsnamen gleich in beiden Sprachen.
+
 Platzhalter in `say`/`show`/`bar.text`: `{boss}`, `{skill}` (Spielname der Fähigkeit), `{target}` (Name des Ziels oder
 „dich“), `{stack}`, `{hp}`, `{npc}`, `{phase}`.
 

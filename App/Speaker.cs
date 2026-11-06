@@ -24,13 +24,22 @@ public sealed class Speaker : IAnnouncerOutput, IDisposable
 
     public string VoiceName { get; private set; } = "";
 
+    /// <summary>Installed voices, those of the current language first.</summary>
     public static List<string> Voices()
     {
         using var tts = new SpeechSynthesizer();
         return tts.GetInstalledVoices().Where(v => v.Enabled)
-            .OrderBy(v => v.VoiceInfo.Culture.Name.StartsWith("de", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .OrderBy(v => Speaks(v.VoiceInfo, L.Lang) ? 0 : 1)
             .Select(v => v.VoiceInfo.Name).ToList();
     }
+
+    public static bool HasVoiceFor(string lang)
+    {
+        using var tts = new SpeechSynthesizer();
+        return tts.GetInstalledVoices().Any(v => v.Enabled && Speaks(v.VoiceInfo, lang));
+    }
+
+    private static bool Speaks(VoiceInfo v, string lang) => v.Culture.Name.StartsWith(lang, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Takes over voice, rate and volume from the settings.</summary>
     public void Apply()
@@ -38,8 +47,9 @@ public sealed class Speaker : IAnnouncerOutput, IDisposable
         lock (_gate)
         {
             var voices = _tts.GetInstalledVoices().Where(v => v.Enabled).Select(v => v.VoiceInfo).ToList();
-            var pick = voices.FirstOrDefault(v => v.Name == _settings.Voice)
-                       ?? voices.FirstOrDefault(v => v.Culture.Name.StartsWith("de", StringComparison.OrdinalIgnoreCase))
+            // the chosen voice only if it speaks the current language, else the first one that does
+            var pick = voices.FirstOrDefault(v => v.Name == _settings.Voice && Speaks(v, L.Lang))
+                       ?? voices.FirstOrDefault(v => Speaks(v, L.Lang))
                        ?? voices.FirstOrDefault();
             if (pick is not null)
             {

@@ -17,31 +17,39 @@ internal static class TrayApp
     {
         ApplicationConfiguration.Initialize();
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-        Application.ThreadException += (_, e) => ErrorLog.Write("Oberfläche", e.Exception);
-        AppDomain.CurrentDomain.UnhandledException += (_, e) => ErrorLog.Write("Absturz", (Exception)e.ExceptionObject);
+        Application.ThreadException += (_, e) => ErrorLog.Write("UI", e.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => ErrorLog.Write("crash", (Exception)e.ExceptionObject);
+        var settings = Settings.Load();
+        L.Lang = settings.Language;
         using var single = new Mutex(true, replayFile is null ? "RaidAnsager.Live" : "RaidAnsager.Replay." + Environment.ProcessId,
             out var first);
         if (!first)
         {
-            MessageBox.Show("Der Raid-Ansager läuft bereits (Symbol im Infobereich unten rechts).", "Raid-Ansager",
+            MessageBox.Show(L.T("The raid announcer is already running (icon in the notification area, bottom right).",
+                "Der Raid-Ansager läuft bereits (Symbol im Infobereich unten rechts)."), L.AppName,
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return 1;
         }
         if (!LiveSniffer.IsNpcapInstalled())
         {
-            var answer = MessageBox.Show(
-                "Npcap ist nicht installiert. Der Raid-Ansager liest damit den Netzwerkverkehr von Aion 2 mit " +
-                "(nur lesen, wie Wireshark).\n\nJetzt npcap.com öffnen? Installer mit den Standardoptionen ausführen, " +
-                "danach den Raid-Ansager neu starten.", "Raid-Ansager", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            var answer = MessageBox.Show(L.T(
+                    "Npcap is not installed. The raid announcer uses it to read the network traffic of Aion 2 " +
+                    "(read only, like Wireshark).\n\nOpen npcap.com now? Run the installer with its default options, " +
+                    "then start the raid announcer again.",
+                    "Npcap ist nicht installiert. Der Raid-Ansager liest damit den Netzwerkverkehr von Aion 2 mit " +
+                    "(nur lesen, wie Wireshark).\n\nJetzt npcap.com öffnen? Installer mit den Standardoptionen ausführen, " +
+                    "danach den Raid-Ansager neu starten."),
+                L.AppName, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (answer == DialogResult.Yes) Open("https://npcap.com/#download");
             return 3;
         }
         if (replayFile is not null && !File.Exists(replayFile))
         {
-            MessageBox.Show("Datei nicht gefunden: " + replayFile, "Raid-Ansager", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(L.T("File not found: ", "Datei nicht gefunden: ") + replayFile, L.AppName, MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
             return 2;
         }
-        using var ctx = new AnsagerContext(replayFile, speed);
+        using var ctx = new AnsagerContext(settings, replayFile, speed);
         Application.Run(ctx);
         return 0;
     }
@@ -55,7 +63,7 @@ internal static class TrayApp
 
 internal sealed class AnsagerContext : ApplicationContext
 {
-    private readonly Settings _settings = Settings.Load();
+    private readonly Settings _settings;
     private readonly GameData _data = GameData.Load();
     private readonly Speaker _speaker;
     private readonly Announcer _engine;
@@ -68,31 +76,36 @@ internal sealed class AnsagerContext : ApplicationContext
     private readonly NotifyIcon _tray;
     private readonly HotkeyWindow _hotkeys;
     private readonly System.Windows.Forms.Timer _timer;
-    private readonly ToolStripMenuItem _statusItem = new() { Enabled = false };
-    private readonly ToolStripMenuItem _modsItem = new() { Enabled = false };
-    private readonly ToolStripMenuItem _moveItem, _muteItem;
+    private readonly string? _replayName;
+    private readonly double _speed;
+    private ToolStripMenuItem _statusItem = null!, _modsItem = null!, _moveItem = null!, _muteItem = null!;
     private readonly long _startedMs = Environment.TickCount64;
-    private volatile string _capture = "starte …";
+    private volatile string _captureRaw = "starting";
+    private volatile string? _replayState;
     private volatile bool _connected;
-    private string _lastFight = "";
+    private Fight? _lastFight;
+    private List<BossMod> _mods = new();
     private List<string> _modProblems = new();
     private int _tooltipTicks;
 
-    public AnsagerContext(string? replayFile, double speed)
+    public AnsagerContext(Settings settings, string? replayFile, double speed)
     {
+        _settings = settings;
+        _replayName = replayFile is null ? null : Path.GetFileName(replayFile);
+        _speed = speed;
         _speaker = new Speaker(_settings);
-        var mods = LoadMods();
-        _engine = new Announcer(_data, mods, _speaker,
+        _mods = LoadMods();
+        _engine = new Announcer(_data, _mods, _speaker,
             new AnnouncerOptions
             {
                 Role = _settings.Role, SayUnknown = _settings.SayUnknown, AllBosses = _settings.AllBosses, InstanceBossesOnly = true,
             });
-        _logs = new FightLogWriter(replayFile is null ? AppPaths.Fights : Path.Combine(AppPaths.Fights, "wiedergabe"), _data);
+        _logs = new FightLogWriter(replayFile is null ? AppPaths.Fights : Path.Combine(AppPaths.Fights, "replay"), _data);
         _engine.FightEnded += f =>
         {
             try { _logs.Write(f); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-            _lastFight = $"{f.Def.Name}: {f.Outcome} nach {FightReport.Clock((f.EndMs - f.PullMs) / 1000.0)}";
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ErrorLog.Write("log", ex); }
+            _lastFight = f;
         };
         _pipe = new Pipeline(_engine) { RawFolder = replayFile is null && _settings.RecordRaw ? AppPaths.Raw : null };
         _pipe.FlowLocked += _ => _connected = true;
@@ -101,12 +114,10 @@ internal sealed class AnsagerContext : ApplicationContext
         _overlay = new OverlayForm(_settings);
         _overlay.Show();
 
-        _moveItem = new ToolStripMenuItem("Overlay verschieben", null, (_, _) => ToggleMove()) { ShortcutKeyDisplayString = "Strg+Alt+O" };
-        _muteItem = new ToolStripMenuItem("Stumm", null, (_, _) => ToggleMute()) { ShortcutKeyDisplayString = "Strg+Alt+M" };
         _tray = new NotifyIcon
         {
             Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? SystemIcons.Application,
-            Text = "Raid-Ansager",
+            Text = L.AppName,
             Visible = true,
             ContextMenuStrip = BuildMenu(),
         };
@@ -121,18 +132,18 @@ internal sealed class AnsagerContext : ApplicationContext
         {
             _sniffer = new LiveSniffer(new LiveSnifferOptions());
             _sniffer.PacketArrived += (raw, dev) => _pipe.OnPacket(raw, dev.Name, LiveSniffer.Describe(dev));
-            _sniffer.StatusChanged += s => _capture = Translate(s);
+            _sniffer.StatusChanged += s => _captureRaw = s;
             _sniffer.Start();
-            _tray.ShowBalloonTip(4000, "Raid-Ansager läuft",
-                "Ansagen kommen automatisch, sobald ein Dungeon- oder Raid-Boss gepullt wird. Rechtsklick auf das Symbol für Einstellungen.",
+            _tray.ShowBalloonTip(4000, L.T("Raid announcer is running", "Raid-Ansager läuft"),
+                L.T("Callouts start automatically when a dungeon or raid boss is pulled. Right-click the icon for settings.",
+                    "Ansagen kommen automatisch, sobald ein Dungeon- oder Raid-Boss gepullt wird. Rechtsklick auf das Symbol für Einstellungen."),
                 ToolTipIcon.Info);
         }
         else
         {
-            _capture = $"Wiedergabe ×{speed:0.#}: {Path.GetFileName(replayFile)}";
             _ = Pipeline.Replay(_pipe, replayFile, speed, _clock, _cts.Token).ContinueWith(t =>
             {
-                _capture = t.IsFaulted ? "Wiedergabe-Fehler: " + t.Exception?.GetBaseException().Message : "Wiedergabe beendet";
+                _replayState = t.IsFaulted ? "error: " + t.Exception?.GetBaseException().Message : "done";
             }, TaskScheduler.Default);
         }
 
@@ -144,26 +155,49 @@ internal sealed class AnsagerContext : ApplicationContext
     private List<BossMod> LoadMods()
     {
         _modProblems = new List<string>();
-        var mods = ModLoader.LoadAll(AppPaths.ModFolders, _modProblems);
-        _modsItem.Text = mods.Count == 0 ? "Keine Boss-Mods geladen"
-            : "Mods: " + string.Join(", ", mods.Select(m => $"{m.Id} {m.Version}{(m.Source == "eingebaut" ? "" : " (Datei)")}"));
-        return mods;
+        return ModLoader.LoadAll(AppPaths.ModFolders, _modProblems);
     }
 
-    private static string Translate(string s) => s switch
+    private string ModsSummary() => _mods.Count == 0
+        ? L.T("No boss mods loaded", "Keine Boss-Mods geladen")
+        : "Mods: " + string.Join(", ", _mods.Select(m => $"{m.Id} {m.Version}{(m.Source == "eingebaut" ? "" : L.T(" (file)", " (Datei)"))}"));
+
+    /// <summary>The capture state in the current language.</summary>
+    private string Capture()
     {
-        "starting" => "starte …",
-        "stopped" => "gestoppt",
-        "AION 2 is not running" => "Aion 2 läuft nicht",
-        "waiting for the game to connect" => "warte auf die Spielverbindung",
-        _ when s.StartsWith("AION 2 not running", StringComparison.Ordinal) => "Aion 2 läuft nicht",
-        _ when s.StartsWith("no game connection", StringComparison.Ordinal) => "keine Spielverbindung",
-        _ when s.StartsWith("capturing on", StringComparison.Ordinal) => "liest mit (" + s["capturing on ".Length..] + ")",
-        _ when s.StartsWith("Npcap is not installed", StringComparison.Ordinal) => "Npcap fehlt (npcap.com)",
-        _ when s.StartsWith("capture error", StringComparison.Ordinal) => "Fehler beim Mitlesen: " + s["capture error: ".Length..],
-        _ when s.StartsWith("no Npcap adapter", StringComparison.Ordinal) => "kein Netzwerkadapter mit Spielverbindung (VPN?)",
-        _ => s,
-    };
+        if (_replayName is not null)
+            return _replayState switch
+            {
+                null => L.T($"replay ×{_speed:0.#}: {_replayName}", $"Wiedergabe ×{_speed:0.#}: {_replayName}"),
+                "done" => L.T("replay finished", "Wiedergabe beendet"),
+                var e => L.T("replay ", "Wiedergabe-") + e,
+            };
+        var s = _captureRaw;
+        return s switch
+        {
+            "starting" => L.T("starting …", "starte …"),
+            "stopped" => L.T("stopped", "gestoppt"),
+            "AION 2 is not running" => L.T("Aion 2 is not running", "Aion 2 läuft nicht"),
+            "waiting for the game to connect" => L.T("waiting for the game connection", "warte auf die Spielverbindung"),
+            _ when s.StartsWith("AION 2 not running", StringComparison.Ordinal) => L.T("Aion 2 is not running", "Aion 2 läuft nicht"),
+            _ when s.StartsWith("no game connection", StringComparison.Ordinal) => L.T("no game connection", "keine Spielverbindung"),
+            _ when s.StartsWith("capturing on", StringComparison.Ordinal) =>
+                L.T("reading (", "liest mit (") + s["capturing on ".Length..] + ")",
+            _ when s.StartsWith("Npcap is not installed", StringComparison.Ordinal) => L.T("Npcap missing (npcap.com)", "Npcap fehlt (npcap.com)"),
+            _ when s.StartsWith("capture error", StringComparison.Ordinal) =>
+                L.T("capture error: ", "Fehler beim Mitlesen: ") + s["capture error: ".Length..],
+            _ when s.StartsWith("no Npcap adapter", StringComparison.Ordinal) =>
+                L.T("no network adapter carries the game connection (VPN?)", "kein Netzwerkadapter mit Spielverbindung (VPN?)"),
+            _ => s,
+        };
+    }
+
+    private bool CaptureProblem()
+    {
+        var s = _captureRaw;
+        return s.StartsWith("Npcap", StringComparison.Ordinal) || s.StartsWith("capture error", StringComparison.Ordinal) ||
+               s.StartsWith("no Npcap adapter", StringComparison.Ordinal);
+    }
 
     private void OnTick()
     {
@@ -171,38 +205,54 @@ internal sealed class AnsagerContext : ApplicationContext
         var st = _engine.Snapshot();
         string? status = null;
         var early = Environment.TickCount64 - _startedMs < 12_000;
-        var problem = _capture.StartsWith("Npcap", StringComparison.Ordinal) || _capture.StartsWith("Fehler", StringComparison.Ordinal) ||
-                      _capture.StartsWith("kein Netzwerk", StringComparison.Ordinal);
+        var problem = CaptureProblem();
         if (problem || early || !_clock.Live)
-            status = "Raid-Ansager: " + (_connected && !problem && _clock.Live ? "verbunden" : _capture) +
-                     (_modProblems.Count > 0 ? $" · {_modProblems.Count} Mod-Problem(e)" : "");
-        if (_settings.Muted) status = (status is null ? "" : status + " · ") + "STUMM";
+            status = $"{L.AppName}: " + (_connected && !problem && _clock.Live ? L.T("connected", "verbunden") : Capture()) +
+                     (_modProblems.Count > 0 ? L.T($" · {_modProblems.Count} mod problem(s)", $" · {_modProblems.Count} Mod-Problem(e)") : "");
+        if (_settings.Muted) status = (status is null ? "" : status + " · ") + L.T("MUTED", "STUMM");
         _overlay.Render(st, status);
 
         if (++_tooltipTicks >= 20)
         {
             _tooltipTicks = 0;
-            _statusItem.Text = (_connected ? "Verbunden" : _capture) + (st.InModZone ? $" · Raid-Zone {st.Zone}" : "");
-            var tip = $"Raid-Ansager – {(_connected ? "verbunden" : _capture)}";
-            if (_lastFight.Length > 0) tip += "\n" + _lastFight;
+            var state = _connected ? L.T("connected", "verbunden") : Capture();
+            _statusItem.Text = char.ToUpper(state[0]) + state[1..] + (st.InModZone ? L.T($" · raid zone {st.Zone}", $" · Raid-Zone {st.Zone}") : "");
+            var tip = $"{L.AppName} – {state}";
+            if (_lastFight is { } f)
+                tip += $"\n{FightReport.Boss(f, _data)}: {f.Outcome}, {FightReport.Clock((f.EndMs - f.PullMs) / 1000.0)}";
             _tray.Text = tip.Length > 127 ? tip[..127] : tip;
         }
     }
 
     private ContextMenuStrip BuildMenu()
     {
+        var keys = L.T("Ctrl+Alt+", "Strg+Alt+");
         var menu = new ContextMenuStrip();
-        menu.Items.Add(new ToolStripMenuItem($"Raid-Ansager {TrayApp.Version}") { Enabled = false, Font = new Font(menu.Font, FontStyle.Bold) });
+        menu.Items.Add(new ToolStripMenuItem($"{L.AppName} {TrayApp.Version}") { Enabled = false, Font = new Font(menu.Font, FontStyle.Bold) });
+        _statusItem = new ToolStripMenuItem(Capture()) { Enabled = false };
         menu.Items.Add(_statusItem);
         menu.Items.Add(new ToolStripSeparator());
+        _moveItem = new ToolStripMenuItem(L.T("Move overlay", "Overlay verschieben"), null, (_, _) => ToggleMove())
+            { ShortcutKeyDisplayString = keys + "O", Checked = _overlay.MoveMode };
         menu.Items.Add(_moveItem);
-        _muteItem.Checked = _settings.Muted;
+        _muteItem = new ToolStripMenuItem(L.T("Mute", "Stumm"), null, (_, _) => ToggleMute())
+            { ShortcutKeyDisplayString = keys + "M", Checked = _settings.Muted };
         menu.Items.Add(_muteItem);
-        menu.Items.Add(new ToolStripMenuItem("Test-Ansage", null, (_, _) => _engine.Test(_clock.Now())) { ShortcutKeyDisplayString = "Strg+Alt+T" });
+        menu.Items.Add(new ToolStripMenuItem(L.T("Test callout", "Test-Ansage"), null, (_, _) => _engine.Test(_clock.Now()))
+            { ShortcutKeyDisplayString = keys + "T" });
         menu.Items.Add(new ToolStripSeparator());
 
-        var role = new ToolStripMenuItem("Meine Rolle");
-        foreach (var (key, label) in new[] { ("alle", "Alle Ansagen"), ("tank", "Tank"), ("heiler", "Heiler"), ("dd", "Schaden (DD)") })
+        var language = new ToolStripMenuItem("Language / Sprache");
+        foreach (var (key, label) in new[] { ("en", "English"), ("de", "Deutsch") })
+            language.DropDownItems.Add(new ToolStripMenuItem(label, null, (_, _) => SetLanguage(key)) { Checked = L.Lang == key });
+        menu.Items.Add(language);
+
+        var role = new ToolStripMenuItem(L.T("My role", "Meine Rolle"));
+        foreach (var (key, label) in new[]
+                 {
+                     ("alle", L.T("All callouts", "Alle Ansagen")), ("tank", "Tank"), ("heiler", L.T("Healer", "Heiler")),
+                     ("dd", L.T("Damage (DPS)", "Schaden (DD)")),
+                 })
         {
             var item = new ToolStripMenuItem(label) { Checked = _settings.Role == key };
             item.Click += (_, _) =>
@@ -215,19 +265,21 @@ internal sealed class AnsagerContext : ApplicationContext
             role.DropDownItems.Add(item);
         }
         menu.Items.Add(role);
-        menu.Items.Add(Toggle("Alle Dungeon-Bosse (auch ohne Mod)", () => _settings.AllBosses, v =>
-        {
-            _settings.AllBosses = v;
-            _engine.Options.AllBosses = v;
-        }));
-        menu.Items.Add(Toggle("Unbekannte Boss-Fähigkeiten vorlesen", () => _settings.SayUnknown, v =>
-        {
-            _settings.SayUnknown = v;
-            _engine.Options.SayUnknown = v;
-        }));
-        menu.Items.Add(Toggle("Warntöne", () => _settings.Tones, v => _settings.Tones = v));
+        menu.Items.Add(Toggle(L.T("All dungeon bosses (also without a mod)", "Alle Dungeon-Bosse (auch ohne Mod)"),
+            () => _settings.AllBosses, v =>
+            {
+                _settings.AllBosses = v;
+                _engine.Options.AllBosses = v;
+            }));
+        menu.Items.Add(Toggle(L.T("Read out unknown boss skills", "Unbekannte Boss-Fähigkeiten vorlesen"),
+            () => _settings.SayUnknown, v =>
+            {
+                _settings.SayUnknown = v;
+                _engine.Options.SayUnknown = v;
+            }));
+        menu.Items.Add(Toggle(L.T("Warning tones", "Warntöne"), () => _settings.Tones, v => _settings.Tones = v));
 
-        var voice = new ToolStripMenuItem("Stimme");
+        var voice = new ToolStripMenuItem(L.T("Voice", "Stimme"));
         foreach (var name in Speaker.Voices())
         {
             var item = new ToolStripMenuItem(name) { Checked = name == _speaker.VoiceName };
@@ -237,43 +289,69 @@ internal sealed class AnsagerContext : ApplicationContext
                 _speaker.Apply();
                 foreach (ToolStripMenuItem i in voice.DropDownItems) i.Checked = i.Text == _speaker.VoiceName;
                 _settings.Save();
-                _speaker.Say("So klinge ich", urgent: true);
+                _speaker.Say(L.T("This is my voice", "So klinge ich"), urgent: true);
             };
             voice.DropDownItems.Add(item);
         }
         menu.Items.Add(voice);
-        menu.Items.Add(Choice("Lautstärke", [25, 50, 75, 100], v => $"{v} %", () => _settings.Volume, v =>
+        menu.Items.Add(Choice(L.T("Volume", "Lautstärke"), [25, 50, 75, 100], v => $"{v} %", () => _settings.Volume, v =>
         {
             _settings.Volume = v;
             _speaker.Apply();
             _speaker.Sound("info");
         }));
-        menu.Items.Add(Choice("Sprechtempo", [0, 2, 4, 6], v => v switch { 0 => "normal", 2 => "etwas schneller", 4 => "schnell", _ => "sehr schnell" },
+        menu.Items.Add(Choice(L.T("Speech rate", "Sprechtempo"), [0, 2, 4, 6],
+            v => v switch
+            {
+                0 => L.T("normal", "normal"), 2 => L.T("a bit faster", "etwas schneller"), 4 => L.T("fast", "schnell"),
+                _ => L.T("very fast", "sehr schnell"),
+            },
             () => _settings.Rate, v =>
             {
                 _settings.Rate = v;
                 _speaker.Apply();
-                _speaker.Say("Purpurkreis weitergeben", urgent: true);
+                _speaker.Say(L.T("Spread out, then stack", "Verteilen, dann sammeln"), urgent: true);
             }));
-        menu.Items.Add(Choice("Overlay-Größe", [80, 100, 125, 150], v => $"{v} %", () => (int)Math.Round(_settings.Scale * 100), v =>
-        {
-            _settings.Scale = v / 100.0;
-            _engine.Test(_clock.Now());
-        }));
-        menu.Items.Add(Toggle("Raid-Mitschnitt speichern (für die Auswertung)", () => _settings.RecordRaw, v =>
-        {
-            _settings.RecordRaw = v;
-            if (_clock.Live) _pipe.RawFolder = v ? AppPaths.Raw : null;
-        }));
+        menu.Items.Add(Choice(L.T("Overlay size", "Overlay-Größe"), [80, 100, 125, 150], v => $"{v} %",
+            () => (int)Math.Round(_settings.Scale * 100), v =>
+            {
+                _settings.Scale = v / 100.0;
+                _engine.Test(_clock.Now());
+            }));
+        menu.Items.Add(Toggle(L.T("Save raid recordings (for improving the mods)", "Raid-Mitschnitt speichern (für die Auswertung)"),
+            () => _settings.RecordRaw, v =>
+            {
+                _settings.RecordRaw = v;
+                if (_clock.Live) _pipe.RawFolder = v ? AppPaths.Raw : null;
+            }));
         menu.Items.Add(new ToolStripSeparator());
+        _modsItem = new ToolStripMenuItem(ModsSummary()) { Enabled = false };
         menu.Items.Add(_modsItem);
-        menu.Items.Add(new ToolStripMenuItem("Mods neu laden", null, (_, _) => ReloadMods()));
-        menu.Items.Add(new ToolStripMenuItem("Mods-Ordner öffnen", null, (_, _) => OpenFolder(AppPaths.Mods, exportMods: true)));
-        menu.Items.Add(new ToolStripMenuItem("Kampfprotokolle öffnen", null, (_, _) => OpenFolder(AppPaths.Fights)));
-        menu.Items.Add(new ToolStripMenuItem("Raid-Mitschnitte öffnen", null, (_, _) => OpenFolder(AppPaths.Raw)));
+        menu.Items.Add(new ToolStripMenuItem(L.T("Reload mods", "Mods neu laden"), null, (_, _) => ReloadMods()));
+        menu.Items.Add(new ToolStripMenuItem(L.T("Open mods folder", "Mods-Ordner öffnen"), null, (_, _) => OpenFolder(AppPaths.Mods, exportMods: true)));
+        menu.Items.Add(new ToolStripMenuItem(L.T("Open fight logs", "Kampfprotokolle öffnen"), null, (_, _) => OpenFolder(AppPaths.Fights)));
+        menu.Items.Add(new ToolStripMenuItem(L.T("Open raid recordings", "Raid-Mitschnitte öffnen"), null, (_, _) => OpenFolder(AppPaths.Raw)));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread()));
+        menu.Items.Add(new ToolStripMenuItem(L.T("Exit", "Beenden"), null, (_, _) => ExitThread()));
         return menu;
+    }
+
+    private void SetLanguage(string lang)
+    {
+        if (L.Lang == lang) return;
+        L.Lang = lang;
+        _settings.Language = lang;
+        _settings.Save();
+        _speaker.Apply(); // a voice of the new language
+        var old = _tray.ContextMenuStrip;
+        _tray.ContextMenuStrip = BuildMenu();
+        old?.Dispose();
+        if (!Speaker.HasVoiceFor(lang))
+            _tray.ShowBalloonTip(8000, L.AppName, L.T(
+                    "No English voice is installed. Windows Settings → Time & language → Speech → Add voices.",
+                    "Keine deutsche Stimme installiert. Windows-Einstellungen → Zeit und Sprache → Sprache → Stimmen hinzufügen."),
+                ToolTipIcon.Warning);
+        _speaker.Say(L.T("English", "Deutsch"), urgent: true);
     }
 
     private ToolStripMenuItem Toggle(string text, Func<bool> get, Action<bool> set)
@@ -316,14 +394,18 @@ internal sealed class AnsagerContext : ApplicationContext
         _settings.Muted = !_settings.Muted;
         _muteItem.Checked = _settings.Muted;
         _settings.Save();
-        if (!_settings.Muted) _speaker.Say("Ton an", urgent: true);
+        if (!_settings.Muted) _speaker.Say(L.T("Sound on", "Ton an"), urgent: true);
     }
 
     private void ReloadMods()
     {
-        _engine.SetMods(LoadMods());
-        var msg = _modProblems.Count == 0 ? _modsItem.Text : _modsItem.Text + "\n\nProbleme:\n" + string.Join("\n", _modProblems.Take(12));
-        _tray.ShowBalloonTip(5000, "Boss-Mods neu geladen", msg ?? "", _modProblems.Count == 0 ? ToolTipIcon.Info : ToolTipIcon.Warning);
+        _mods = LoadMods();
+        _engine.SetMods(_mods);
+        _modsItem.Text = ModsSummary();
+        var msg = _modProblems.Count == 0 ? ModsSummary()
+            : ModsSummary() + "\n\n" + L.T("Problems:", "Probleme:") + "\n" + string.Join("\n", _modProblems.Take(12));
+        _tray.ShowBalloonTip(5000, L.T("Boss mods reloaded", "Boss-Mods neu geladen"), msg,
+            _modProblems.Count == 0 ? ToolTipIcon.Info : ToolTipIcon.Warning);
     }
 
     private static void OpenFolder(string dir, bool exportMods = false)
@@ -350,7 +432,7 @@ internal sealed class AnsagerContext : ApplicationContext
         _timer.Stop();
         _cts.Cancel();
         _sniffer?.Stop();
-        _engine.Flush("Programm beendet");
+        _engine.Flush(L.T("program closed", "Programm beendet"));
         _tray.Visible = false;
         base.ExitThreadCore();
     }
@@ -372,7 +454,7 @@ internal sealed class AnsagerContext : ApplicationContext
     }
 }
 
-/// <summary>Strg+Alt+key hotkeys through RegisterHotKey (no keyboard hook; the game is not touched).</summary>
+/// <summary>Ctrl+Alt+key hotkeys through RegisterHotKey (no keyboard hook; the game is not touched).</summary>
 internal sealed class HotkeyWindow : NativeWindow, IDisposable
 {
     private const int WM_HOTKEY = 0x0312;

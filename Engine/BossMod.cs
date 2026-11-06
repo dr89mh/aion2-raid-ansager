@@ -30,8 +30,8 @@ public sealed class BossDef
     public List<uint> Npc { get; set; } = new();
     /// <summary>Seconds without any combat on the boss before the fight counts as reset/wipe.</summary>
     public double ResetAfter { get; set; } = 45;
-    /// <summary>Spoken when the boss dies. Default "{boss} besiegt"; "" = silent.</summary>
-    public string? OnKill { get; set; }
+    /// <summary>Spoken when the boss dies. Default "{boss} defeated"; "" = silent.</summary>
+    public LocalText? OnKill { get; set; }
     public List<Trigger> Triggers { get; set; } = new();
 }
 
@@ -55,8 +55,10 @@ public sealed class Trigger
     public int? Phase { get; set; }
     public int? SetPhase { get; set; }
 
-    public string? Say { get; set; }
-    public string? Show { get; set; }
+    /// <summary>Spoken text: a string, or one per language: { "en": "…", "de": "…" }.</summary>
+    public LocalText? Say { get; set; }
+    /// <summary>Overlay text (default: <see cref="Say"/>).</summary>
+    public LocalText? Show { get; set; }
     public string? Color { get; set; }
     /// <summary>alarm | info | none</summary>
     public string? Sound { get; set; }
@@ -70,7 +72,7 @@ public sealed class Trigger
     public List<string> Roles { get; set; } = new();
     /// <summary>Starts (or restarts) a countdown bar.</summary>
     public BarDef? Bar { get; set; }
-    /// <summary>Removes the bar with this text.</summary>
+    /// <summary>Removes the bar with this text (any language).</summary>
     public string? CancelBar { get; set; }
     /// <summary>false = skill code taken from game data/guides, not yet seen in our own recordings.</summary>
     public bool Verified { get; set; } = true;
@@ -79,14 +81,14 @@ public sealed class Trigger
 
 public sealed class BarDef
 {
-    public string Text { get; set; } = "";
+    public LocalText Text { get; set; } = "";
     public double In { get; set; }
     /// <summary>Seconds before the end at which the bar turns red and is announced.</summary>
     public double Warn { get; set; } = 5;
     /// <summary>Spoken at the warning. Default "{text} in {warn}"; "" = silent.</summary>
-    public string? WarnSay { get; set; }
+    public LocalText? WarnSay { get; set; }
     /// <summary>Spoken when the bar runs out (optional).</summary>
-    public string? EndSay { get; set; }
+    public LocalText? EndSay { get; set; }
 }
 
 public static class ModLoader

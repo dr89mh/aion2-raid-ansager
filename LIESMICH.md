@@ -1,5 +1,7 @@
 # Raid-Ansager für Aion 2
 
+**English:** [README.md](README.md)
+
 Der Raid-Ansager sagt in Dungeons und Raids an, was der Boss gerade macht. Die Ansage kommt per Sprache, mit Warnton
 und als Text über dem Spiel. Dazu zeigt er Boss-HP und Kampfdauer an.
 
@@ -7,6 +9,9 @@ und als Text über dem Spiel. Dazu zeigt er Boss-HP und Kampfdauer an.
   „Orbwurf“, sobald der Boss sie einsetzt. Jede Fähigkeit höchstens alle 20 Sekunden.
 - **Für Bosse mit eigener Boss-Mod** (zuerst: Raid **Ludra**) kommen eigene Ansagen wie „Bingo, sicheres Feld
   suchen“, Phasen nach HP und Countdown-Balken („… in 5“).
+- **Englisch oder Deutsch:** Standard ist Englisch. Umstellen per Rechtsklick auf das Symbol → **Language / Sprache →
+  Deutsch**. Dann sind Ansagen, Fähigkeits- und Bossnamen, Menü und Overlay deutsch, und eine deutsche Stimme wird
+  gewählt.
 
 ## So funktioniert es
 
@@ -41,6 +46,8 @@ Sprachansagen funktionieren trotzdem.
 
 **Rechtsklick** auf das Symbol öffnet das Menü:
 
+- **Language / Sprache:** English oder Deutsch (Standard: English). Fehlt eine deutsche Stimme: Windows-Einstellungen →
+  Zeit und Sprache → Sprache → Stimmen hinzufügen.
 - **Meine Rolle:** Tank, Heiler oder DD. Ansagen, die nur eine andere Rolle betreffen, entfallen dann.
 - **Alle Dungeon-Bosse (auch ohne Mod):** Ist das aus, reagiert der Ansager nur auf Bosse mit eigener Mod (Ludra).
 - **Unbekannte Boss-Fähigkeiten vorlesen:** Liest Fähigkeiten, für die es noch keine eigene Ansage gibt, mit ihrem
@@ -53,7 +60,7 @@ Sprachansagen funktionieren trotzdem.
 
 ## Was angesagt wird
 
-- In Dungeons ohne Mod: der Name jeder Boss-Fähigkeit, sobald der Boss sie beginnt. Normale Angriffe werden nicht
+- In Dungeons ohne Mod: der Name jeder Boss-Fähigkeit in der gewählten Sprache, sobald der Boss sie beginnt. Normale Angriffe werden nicht
   angesagt. Oben im Overlay stehen Boss-Name, HP und Kampfzeit.
 - Mit Mod (Ludra): ein Hinweis beim Pull, Phasen nach Boss-HP (z. B. Bingo bei etwa 50 % und 25 %), eigene Texte zu
   bekannten Fähigkeiten und Countdown-Balken für Fähigkeiten, die regelmäßig kommen

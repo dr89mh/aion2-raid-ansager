@@ -19,6 +19,7 @@ internal sealed class OverlayForm : Form
         WS_EX_NOACTIVATE = 0x08000000, GWL_EXSTYLE = -20, ULW_ALPHA = 2, WM_NCLBUTTONDOWN = 0xA1, HTCAPTION = 2;
 
     private static readonly CultureInfo De = CultureInfo.GetCultureInfo("de-DE");
+    private static CultureInfo Num => L.De ? De : CultureInfo.InvariantCulture;
     private readonly Settings _settings;
     private string _lastSignature = "";
     private bool _moveMode;
@@ -122,8 +123,8 @@ internal sealed class OverlayForm : Form
         var lineH = 17 * k;
         var lines = new List<(string Text, Color Color)>();
         if (showStatus)
-            lines.Add((status ?? (st.InModZone ? $"Raid-Ansager bereit · Zone {st.Zone}" : "Raid-Ansager"), Color.FromArgb(220, 200, 200, 210)));
-        if (moveMode) lines.Add(("Ziehen zum Verschieben · Strg+Alt+O fixiert", Color.FromArgb(255, 255, 210, 74)));
+            lines.Add((status ?? (st.InModZone ? $"{L.AppName} {L.T("ready", "bereit")} · Zone {st.Zone}" : L.AppName), Color.FromArgb(220, 200, 200, 210)));
+        if (moveMode) lines.Add((L.T("Drag to move · Ctrl+Alt+O to lock", "Ziehen zum Verschieben · Strg+Alt+O fixiert"), Color.FromArgb(255, 255, 210, 74)));
 
         var h = st.Bosses.Count * (bossH + gap) + st.Alerts.Count * alertH + st.Bars.Count * (barH + gap) +
                 st.Unknown.Count * lineH + lines.Count * lineH + 8 * k;
@@ -158,7 +159,7 @@ internal sealed class OverlayForm : Form
                     using var hp = new SolidBrush(Color.FromArgb(200, 190, 40, 40));
                     g.FillRectangle(hp, r.X + 6 * k, r.Bottom - 5 * k, (float)((w - 12 * k) * Math.Clamp(b.HpPct, 0, 100) / 100), 3 * k);
                 }
-                var text = $"{b.Name}   {(double.IsNaN(b.HpPct) ? "HP ?" : b.HpPct.ToString("0.0", De) + " %")}" +
+                var text = $"{b.Name}   {(double.IsNaN(b.HpPct) ? "HP ?" : b.HpPct.ToString("0.0", Num) + " %")}" +
                            (b.Phase > 1 ? $"   Phase {b.Phase}" : "") + $"   {(int)(b.Seconds / 60)}:{(int)b.Seconds % 60:00}";
                 using var fg = new SolidBrush(Color.White);
                 g.DrawString(text, bossFont, fg, r.X + 8 * k, r.Y + 2 * k);
@@ -193,7 +194,7 @@ internal sealed class OverlayForm : Form
                 }
                 using var fg = new SolidBrush(Color.White);
                 g.DrawString(b.Text, barFont, fg, r.X + 8 * k, r.Y + 3 * k);
-                var secs = b.Remaining >= 10 ? ((int)Math.Ceiling(b.Remaining)).ToString(De) : b.Remaining.ToString("0.0", De);
+                var secs = b.Remaining >= 10 ? ((int)Math.Ceiling(b.Remaining)).ToString(Num) : b.Remaining.ToString("0.0", Num);
                 var sz = g.MeasureString(secs, barFont);
                 g.DrawString(secs, barFont, fg, r.Right - sz.Width - 6 * k, r.Y + 3 * k);
                 y += barH + gap;
