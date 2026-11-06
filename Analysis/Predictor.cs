@@ -8,6 +8,8 @@ namespace RaidAnsager.Analysis;
 public sealed class Prediction
 {
     public uint Npc;
+    /// <summary>All NPC codes of the boss: every difficulty level has its own code, with the same skills.</summary>
+    public List<uint> NpcCodes = new();
     public string Boss = "";
     public uint Skill;
     public string? Caster;
@@ -26,13 +28,20 @@ public sealed class Prediction
 
     /// <summary>The predictor used for the timer: the best of the three with enough lead time, or null.</summary>
     /// <remarks>Needs at least two pulls: a pattern seen in a single pull may be chance.</remarks>
-    public Estimate? Best => Pulls < 2 ? null : new[] { After, Interval is { Seconds: >= 6 } ? Interval : null }.Where(e => e is { Usable: true })
+    public Estimate? Best => Pulls < 2 ? null : new[] { After, Interval is { Seconds: >= 6 } ? Interval : null, FromPull }.Where(e => e is { Usable: true })
         .OrderByDescending(e => Math.Round(e!.Score, 1)).ThenByDescending(e => e!.Seconds).FirstOrDefault();
 
     public double Relevance => Marks * 10 + Kills * 5 + Math.Min(HitsOnMe, 20) * 0.2 + Casts * 0.01;
 
     /// <summary>Marked, deadly or hitting the recording player regularly: worth a spoken warning.</summary>
     public bool Important => Marks > 0 || Kills > 0 || HitsOnMe >= 3;
+
+    /// <summary>For skills without a name the bar is only spoken when it clearly matters: marked, deadly, or hitting
+    /// in at least half of its casts.</summary>
+    public bool ImportantUnnamed => Marks > 0 || Kills > 0 || HitsOnMe >= 3 && HitsOnMe * 2 >= Casts;
+
+    /// <summary>Fought inside an instance (dungeon/raid): field bosses of the open world get no timers.</summary>
+    public bool Instance;
 }
 
 /// <param name="Seconds">typical gap</param>
@@ -67,9 +76,12 @@ public static class Predictor
     public static List<Prediction> Run(IEnumerable<Fight> fights, GameData data)
     {
         var result = new List<Prediction>();
-        foreach (var boss in fights.Where(f => (f.EndMs - f.PullMs) >= 15_000).GroupBy(f => f.Npc))
+        // one boss over all its difficulty levels (each level is an NPC code of its own, the skills are the same)
+        foreach (var boss in fights.Where(f => (f.EndMs - f.PullMs) >= 15_000)
+                     .GroupBy(f => data.NpcName(f.Npc, "en") ?? f.Npc.ToString(CultureInfo.InvariantCulture)))
         {
             var pulls = boss.ToList();
+            var codes = pulls.Select(f => f.Npc).Distinct().Order().ToList();
             // per pull: casts per (caster, skill), deduplicated; boss casts only for predecessors
             var casts = pulls.Select(Casts).ToList();
             var keys = casts.SelectMany(c => c.Keys).Distinct().ToList();
@@ -80,7 +92,8 @@ public static class Predictor
                 if (caster is not null && data.SkillName(skill) is null) continue; // unnamed helper casts of adds
                 var p = new Prediction
                 {
-                    Npc = boss.Key, Boss = FightReport.Boss(pulls[0], data), Skill = skill, Caster = caster,
+                    Npc = codes[0], NpcCodes = codes, Boss = FightReport.Boss(pulls[0], data), Skill = skill, Caster = caster,
+                    Instance = pulls.Any(f => f.Zone >= 100_000) || codes.Any(data.IsInstanceBoss),
                     Casts = casts.Sum(c => c.TryGetValue(key, out var l) ? l.Count : 0),
                     Pulls = casts.Count(c => c.ContainsKey(key)),
                 };
@@ -239,13 +252,15 @@ public static class Predictor
         {
             var first = boss.First();
             sb.AppendLine();
-            sb.AppendLine($"=== {first.Boss} (NPC {boss.Key}), {boss.Max(p => p.Pulls)} Pull(s)");
+            sb.AppendLine($"=== {first.Boss} (NPC {string.Join("/", first.NpcCodes)}), {boss.Max(p => p.Pulls)} Pull(s)");
             foreach (var p in boss.OrderByDescending(p => p.Best is not null).ThenByDescending(p => p.Relevance))
             {
                 var name = (p.Caster is null ? "" : $"[{p.Caster}] ") + (data.SkillName(p.Skill) ?? $"#{p.Skill}");
+                var best0 = p.Best;
                 var tag = $"M{p.Marks} K{p.Kills} H{p.HitsOnMe}";
                 var best = p.Best;
                 var what = best is null ? L.T("not predictable yet", "noch nicht vorhersagbar")
+                    : best == p.FromPull ? L.T($"TIMER {best.Seconds:0.0} s after the pull", $"TIMER {best.Seconds:0.0} s nach dem Pull")
                     : best == p.After ? L.T($"TIMER {best.Seconds:0.0} s after \"{data.SkillName(p.AfterSkill) ?? "#" + p.AfterSkill}\"",
                         $"TIMER {best.Seconds:0.0} s nach „{data.SkillName(p.AfterSkill) ?? "#" + p.AfterSkill}“")
                     : L.T($"TIMER every {best.Seconds:0.0} s", $"TIMER alle {best.Seconds:0.0} s");
@@ -259,7 +274,8 @@ public static class Predictor
     }
 
     /// <summary>A mod with countdown bars for the predictable skills (at most <paramref name="perBoss"/> per boss,
-    /// marked and deadly ones first).</summary>
+    /// marked and deadly ones first). Skills without a name in the game data are called "Attack 431" after the last
+    /// digits of their code (stable between analyses); they get a timer only when they matter (marked, deadly, hitting).</summary>
     public static BossMod Mod(List<Prediction> all, GameData data, int perBoss = 4)
     {
         var mod = new BossMod
@@ -268,57 +284,73 @@ public static class Predictor
             Name = "Dungeon countdowns (learned from member logs)",
             Version = DateTime.Now.ToString("yyyy-MM-dd-HHmm", CultureInfo.InvariantCulture),
             Notes = "Generated by 'RaidAnsager analyse'. Every timer was right in at least 75 % of the recorded casts. " +
-                    "Spoken warnings only for marked, deadly or often hitting skills; the others are silent bars.",
+                    "Spoken warnings only for marked, deadly or often hitting skills; the others are silent bars. " +
+                    "Unnamed boss skills are called 'Attack <last digits of the code>' – rename them once players know which attack it is.",
         };
-        foreach (var boss in all.GroupBy(p => p.Npc))
+        foreach (var boss in all.Where(p => p.Instance).GroupBy(p => p.Npc))
         {
-            // several codes with one name (parts of a skill): one timer, the most relevant
-            var chosen = boss.Where(p => p.Best is not null && data.SkillName(p.Skill) is not null && (p.Caster is null || p.Important))
-                .GroupBy(p => data.SkillName(p.Skill, "en"))
+            // unnamed boss skills are called by the last digits of their code: stable between analyses
+            var unnamed = boss.Where(p => data.SkillName(p.Skill) is null).Select(p => p.Skill).Distinct().ToList();
+            string Short(uint skill)
+            {
+                foreach (var digits in new[] { 1000u, 10_000u })
+                    if (unnamed.Count(u => u % digits == skill % digits) == 1)
+                        return (skill % digits).ToString(digits == 1000 ? "000" : "0000", CultureInfo.InvariantCulture);
+                return skill.ToString(CultureInfo.InvariantCulture);
+            }
+            LocalText Label(uint skill) => data.SkillName(skill, "en") is { } en
+                ? LocalText.Of(en, data.SkillName(skill, "de") ?? en)
+                : LocalText.Of($"Attack {Short(skill)}", $"Attacke {Short(skill)}");
+            string En(uint skill) => Label(skill).Texts["en"];
+
+            var chosen = boss.Where(p => p.Best is not null && (p.Caster is null || p.Important) &&
+                                         (data.SkillName(p.Skill) is not null || p.Important && p.Caster is null))
+                .GroupBy(p => data.SkillName(p.Skill, "en") ?? "#" + p.Skill)
                 .Select(g => g.OrderByDescending(p => p.Relevance).ThenByDescending(p => p.Best!.Score).First())
                 .OrderByDescending(p => p.Relevance).ThenByDescending(p => p.Best!.Score).Take(perBoss).ToList();
             if (chosen.Count == 0) continue;
-            var def = new BossDef { Id = boss.Key.ToString(CultureInfo.InvariantCulture), Name = data.NpcName(boss.Key, "en") ?? boss.First().Boss, Npc = { boss.Key } };
+            var first = boss.First();
+            var def = new BossDef
+            {
+                Id = first.Npc.ToString(CultureInfo.InvariantCulture), Name = data.NpcName(first.Npc, "en") ?? first.Boss,
+                Npc = first.NpcCodes.ToList(),
+            };
             foreach (var p in chosen)
             {
                 var best = p.Best!;
-                var text = LocalText.Of(data.SkillName(p.Skill, "en"), data.SkillName(p.Skill, "de"));
-                var bar = new BarDef
-                {
-                    Text = text, In = Math.Round(best.Seconds - best.Spread, 1), Warn = best.Seconds >= 10 ? 5 : 3,
-                    WarnSay = p.Important ? null : (LocalText)"", // spoken "… in 3" only for the important ones, the rest is a silent bar
-                };
-                var note = $"{p.Casts}× in {p.Pulls} pull(s), M{p.Marks} K{p.Kills} H{p.HitsOnMe}; " +
-                           (best == p.After ? $"after {p.AfterSkill}: " : "cooldown: ") + best.Describe();
+                var text = Label(p.Skill);
+                // spoken "… in 3" only for the important ones, the rest is a silent bar
+                var loud = data.SkillName(p.Skill) is null ? p.ImportantUnnamed : p.Important;
+                LocalText? warn = loud ? null : (LocalText)"";
+                var note = $"{p.Casts}× in {p.Pulls} pull(s), M{p.Marks} K{p.Kills} H{p.HitsOnMe}" +
+                           (data.SkillName(p.Skill) is null ? $", unnamed skill {p.Skill}" : "") + "; ";
                 if (best == p.After)
                     def.Triggers.Add(new Trigger
                     {
-                        Name = $"{data.SkillName(p.Skill, "en")} ← {data.SkillName(p.AfterSkill, "en") ?? p.AfterSkill.ToString(CultureInfo.InvariantCulture)}",
-                        On = "cast", Skill = { p.AfterSkill }, Bar = bar, Cooldown = 1, Note = note,
+                        Name = $"{En(p.Skill)} ← {En(p.AfterSkill)}", On = "cast", Skill = { p.AfterSkill }, Cooldown = 1,
+                        Bar = new BarDef { Text = text, In = Math.Round(best.Seconds - best.Spread, 1), Warn = best.Seconds >= 10 ? 5 : 3, WarnSay = warn },
+                        Note = note + $"after {p.AfterSkill}: " + best.Describe(),
                     });
-                else
+                else if (best == p.Interval)
                     def.Triggers.Add(new Trigger
                     {
-                        Name = $"{data.SkillName(p.Skill, "en")} (cooldown)", On = "cast", Skill = { p.Skill }, Bar = bar,
-                        Cooldown = 1, Note = note,
+                        Name = $"{En(p.Skill)} (cooldown)", On = "cast", Skill = { p.Skill }, Cooldown = 1,
+                        Bar = new BarDef { Text = text, In = Math.Round(best.Seconds - best.Spread, 1), Warn = best.Seconds >= 10 ? 5 : 3, WarnSay = warn },
+                        Note = note + "cooldown: " + best.Describe(),
                     });
                 if (p.FromPull is { Usable: true } pull)
                     def.Triggers.Add(new Trigger
                     {
-                        Name = $"{data.SkillName(p.Skill, "en")} (first)", On = "pull",
-                        Bar = new BarDef
-                        {
-                            Text = text, In = Math.Round(pull.Seconds - pull.Spread, 1), Warn = pull.Seconds >= 10 ? 5 : 3,
-                            WarnSay = p.Important ? null : (LocalText)"",
-                        },
-                        Note = $"first cast after the pull: {pull.Describe()}",
+                        Name = $"{En(p.Skill)} (first)", On = "pull",
+                        Bar = new BarDef { Text = text, In = Math.Round(pull.Seconds - pull.Spread, 1), Warn = pull.Seconds >= 10 ? 5 : 3, WarnSay = warn },
+                        Note = note + $"first cast after the pull: {pull.Describe()}",
                     });
-                // the cast itself is still read out (like in learning mode)
-                def.Triggers.Add(new Trigger
-                {
-                    Name = data.SkillName(p.Skill, "en") ?? p.Skill.ToString(CultureInfo.InvariantCulture), On = "cast",
-                    Skill = { p.Skill }, Say = text, Sound = "none", ShowSeconds = 2.5,
-                });
+                // the cast itself is still read out (like in learning mode), unnamed ones only when they matter
+                if (data.SkillName(p.Skill) is not null || loud)
+                    def.Triggers.Add(new Trigger
+                    {
+                        Name = En(p.Skill), On = "cast", Skill = { p.Skill }, Say = text, Sound = "none", ShowSeconds = 2.5,
+                    });
             }
             mod.Bosses.Add(def);
         }

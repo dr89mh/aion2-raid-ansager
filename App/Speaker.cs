@@ -61,11 +61,19 @@ public sealed class Speaker : IAnnouncerOutput, IDisposable
         }
     }
 
+    private string _lastText = "";
+    private long _lastAt;
+
     public void Say(string text, bool urgent)
     {
         if (_settings.Muted || string.IsNullOrWhiteSpace(text)) return;
         lock (_gate)
         {
+            // the same sentence twice within 2 s (two triggers, or several parts of one skill) is said once
+            var now = Environment.TickCount64;
+            if (text == _lastText && now - _lastAt < 2_000) return;
+            _lastText = text;
+            _lastAt = now;
             if (urgent) _tts.SpeakAsyncCancelAll();
             else if (Volatile.Read(ref _pending) >= 2) return; // do not pile up stale callouts
             Interlocked.Increment(ref _pending);

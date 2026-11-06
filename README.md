@@ -15,9 +15,11 @@ boss HP and countdown bars for skills that come at regular intervals. It only re
   callouts per role (tank, healer, DPS).
 - **English or German** (menu "Language / Sprache"): callouts, skill and boss names, menu and overlay. English is the
   default.
-- **Learned countdowns** for 15 dungeon bosses so far, e.g. Ultimate Berk "Wave of Fury in 3" (38 of 38 times
-  8.4 s after its wind-up), Divine Auldor "Tempest Strike in 5", Watchdog Kwapo "Thunder Cry". Only the important ones
-  are spoken, the others are silent bars.
+- **Learned countdowns** for 17 dungeon and nightmare bosses so far, e.g. Ultimate Berk "Wave of Fury in 3" (38 of
+  38 times 8.4 s after its wind-up), Divine Auldor "Tempest Strike in 5", Zikel's Apparition "Attack 431" (10 s after
+  the pull, hit in 12 of 13 pulls). All difficulty levels of a boss count together. Boss skills without a name in the
+  game data are called "Attack" plus the last digits of their code. Only the important ones are spoken, the others are
+  silent bars.
 - A fight log for every pull, which new boss mods and timers are built from.
 
 > **Warning:** According to another tool author, NCSOFT support considers software that reads game data a violation of

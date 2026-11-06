@@ -53,9 +53,11 @@ Sprachansagen funktionieren trotzdem.
 - **Meine Rolle:** Tank, Heiler oder DD. Ansagen, die nur eine andere Rolle betreffen, entfallen dann.
 - **Alle Dungeon-Bosse (auch ohne Mod):** Ist das aus, reagiert der Ansager nur auf Bosse mit eigener Mod (Ludra,
   gelernte Timer).
-- **Gelernte Countdown-Timer:** Countdowns, die aus den Protokollen gelernt wurden, bisher für 15 Dungeon-Bosse (z. B.
-  Vollendete Berk „Furorwelle in 3“, Heiliger Auldor „Sturmstreich in 5“). Laut angesagt werden nur die wichtigen,
-  die anderen laufen als stiller Balken.
+- **Gelernte Countdown-Timer:** Countdowns, die aus den Protokollen gelernt wurden, bisher für 17 Dungeon- und
+  Nightmare-Bosse. Beispiele: Vollendete Berk „Furorwelle in 3“, Heiliger Auldor „Sturmstreich in 5“, Zikels Schemen
+  „Attacke 431“. Die kommt 10 s nach dem Pull und hat in 12 von 13 Pulls getroffen. Alle Schwierigkeitsstufen eines
+  Bosses zählen zusammen. Boss-Fähigkeiten ohne Namen in den Spieldaten heißen „Attacke“ plus die letzten Ziffern ihrer
+  Nummer. Laut angesagt werden nur die wichtigen, die anderen laufen als stiller Balken.
 - **Letzte Boss-Attacke als wichtig markieren** (Strg+Alt+K) und **Protokolle für die Timer hochladen:** siehe unten.
 - **Unbekannte Boss-Fähigkeiten vorlesen:** Liest Fähigkeiten, für die es noch keine eigene Ansage gibt, mit ihrem
   Spielnamen vor. Wird es zu viel, ausschalten. Boss-HP und Overlay bleiben.

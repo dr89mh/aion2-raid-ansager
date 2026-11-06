@@ -506,8 +506,13 @@ public sealed class Announcer
         }
     }
 
-    private bool Covered(Fight f, uint skill) =>
-        f.Def.Triggers.Any(t => t.On is "cast" or "hit" && t.Skill.Contains(skill));
+    /// <summary>A trigger handles this skill, or another code with the same name (parts of one skill).</summary>
+    private bool Covered(Fight f, uint skill)
+    {
+        var name = _data.SkillName(skill, "en");
+        return f.Def.Triggers.Any(t => t.On is "cast" or "hit" &&
+                                       (t.Skill.Contains(skill) || name is not null && t.Skill.Any(s => _data.SkillName(s, "en") == name)));
+    }
 
     private bool TargetOk(Trigger t, Fight f, uint target) => t.Target switch
     {
