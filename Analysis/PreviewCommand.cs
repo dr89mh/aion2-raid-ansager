@@ -20,6 +20,7 @@ public static class PreviewCommand
     {
         public void Say(string text, bool urgent) => lines.Add($"{Stamp(now())}  SAGT{(urgent ? "!" : " ")} {text}");
         public void Sound(string kind) => lines.Add($"{Stamp(now())}  TON   {kind}");
+        public void Show(string text, string color) => lines.Add($"{Stamp(now())}  ZEIGT {text}");
         private static string Stamp(long ms) => DateTimeOffset.FromUnixTimeMilliseconds(ms).ToLocalTime().ToString("HH:mm:ss.f", CultureInfo.InvariantCulture);
     }
 

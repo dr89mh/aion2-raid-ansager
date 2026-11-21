@@ -11,8 +11,8 @@ boss HP and countdown bars for skills that come at regular intervals. It only re
 
 - **Every dungeon boss:** its skills are read out by their in-game name as soon as it starts them
   (e.g. "Drana Wave", "Explosive Crystal").
-- **Bosses with a boss mod**, first of all the raid **Ludra**: own callouts, phases by HP, countdowns ("… in 5"),
-  callouts per role (tank, healer, DPS).
+- **Bosses with a boss mod**, first of all the raid **Ludra**: own callouts with measured timings ("Jump",
+  "Out of the middle", "Bingo check in 5"), countdown bars, callouts per role (tank, healer, DPS).
 - **English or German** (menu "Language / Sprache"): callouts, skill and boss names, menu and overlay. English is the
   default.
 - **Learned countdowns** for 17 dungeon and nightmare bosses so far, e.g. Ultimate Berk "Wave of Fury in 3" (38 of
@@ -78,8 +78,9 @@ uploads per day and network, no IP addresses stored; downloading needs the raid 
 ## Boss mods
 
 How callouts for a boss are written is described in [MODS.md](MODS.md) (German). The built-in Ludra mod is
-[`mods/ludra.json`](mods/ludra.json). Texts can be given per language (`{ "en": "…", "de": "…" }`). Its HP thresholds
-still come from guides for the old version and will be reworked from real recordings after the first raid nights.
+[`mods/ludra.json`](mods/ludra.json). Texts can be given per language (`{ "en": "…", "de": "…" }`). Since 0.7.0 the
+Ludra part comes from our own recordings of the reworked raid (kill on 2026-11-12): timings measured from the boss's
+casts, mechanics named by the players from the video. Rahu and Ketu are partly still based on guides.
 
 ## Building
 

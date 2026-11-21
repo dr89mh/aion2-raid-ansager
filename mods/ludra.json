@@ -9,10 +9,12 @@
   //    Gaze 1801962 (Ketu), Ure's Area 1803030 and Ludra's Trial 1803040 (Ludra) carry the names of guide mechanics in
   //    the game data; that they belong to these bosses is not yet confirmed ("verified": false).
   // After the first raid: run "RaidAnsager analyse <recording.pcapng>" and confirm or fix the codes from the draft.
+  // 2026-11-21a: Ludra rebuilt from the kill raid of 2026-11-12 (7 pulls, Ludra killed). Mechanics named by players
+  //  from the video, timings measured in the recording. NC reworked Ludra on 2026-11-04, the guides are outdated.
   // Texts: a plain string, or one per language { "en": "…", "de": "…" }.
   "id": "ludra",
   "name": "Sanctuary: Eternal Ludra",
-  "version": "2026-11-06d",
+  "version": "2026-11-21b",
   "zones": [600082, 600083],
   "notes": "Fusion reactor first (runners left/right only when the side reactors activate), then Rahu and Ketu in parallel (two groups of five), then Ludra with all ten.",
   "bosses": [
@@ -24,21 +26,112 @@
         {
           "name": "Pull",
           "on": "pull",
-          "say": {
-            "en": "Rahu. Bomb: share it when the countdown ends, number to number. Donuts: stack in front of the boss",
-            "de": "Rahu. Bombe bei Ablauf weitergeben, Nummer an Nummer. Donuts: eng vor dem Boss sammeln"
-          },
-          "show": { "en": "RAHU – share bombs · donuts: stack in front", "de": "RAHU – Bomben weitergeben · Donuts: vorne sammeln" },
-          "sound": "info",
-          "showSeconds": 6
+          "show": { "en": "RAHU", "de": "RAHU" },
+          "sound": "none",
+          "showSeconds": 3,
+          "note": "Silent: Rahu's idle cast 1802995 (every ~7 s before the pull) already starts the fight. Old guide text (share bombs, donuts) was wrong per the raid of 2026-11-08"
         },
         {
-          "name": "Wheel of Torment soon (~75 %)",
-          "on": "hp",
-          "below": 78,
-          "say": { "en": "Wheel of Torment soon. Stack at six o'clock in front of Rahu", "de": "Gleich Fessel der Qualen. Bei sechs Uhr vor Rahu sammeln" },
-          "show": { "en": "WHEEL OF TORMENT – stack at 6 o'clock", "de": "FESSEL DER QUALEN – 6 Uhr sammeln" },
+          "name": "Bomb cast (Soul Strike unless someone gets the bomb)",
+          "on": "cast",
+          "skill": [1802805],
+          "sound": "none",
+          "cooldown": 5,
+          "verified": true,
+          "note": "Raid 2026-11-08: 2.3–2.4 s after cast 1802805 debuff 12000064 lands on a player and 1802880 explodes 8.3 s after the cast (55 of 90). Every Soul Strike 1802720 came 5.3–5.4 s after a cast without debuff (10), but 25 casts without debuff (mostly at ~65 % and ~49 %) had no Soul Strike, so there is no warning for it yet"
+        },
+        {
+          "name": "Stack and jump",
+          "on": "cast",
+          "skill": [1802820],
+          "say": { "en": "Stack up", "de": "Sammeln" },
+          "show": { "en": "STACK UP – THEN JUMP", "de": "SAMMELN – DANN SPRINGEN" },
           "sound": "alarm",
+          "showSeconds": 3,
+          "bar": { "text": { "en": "Jump", "de": "Springen" }, "in": 2.6, "warn": 0 },
+          "cooldown": 5,
+          "verified": true,
+          "note": "Players: everyone stacks and jumps. Raid 2026-11-08: five helpers hit with 1802830 2.6–2.7 s after the cast (46 of 46)"
+        },
+        {
+          "name": "Jump now",
+          "on": "cast",
+          "skill": [1802820],
+          "delay": 2.0,
+          "say": { "en": "Jump", "de": "Springen" },
+          "show": { "en": "JUMP", "de": "SPRINGEN" },
+          "sound": "alarm",
+          "showSeconds": 1.5,
+          "cooldown": 5,
+          "verified": true,
+          "note": "Spoken 0.6 s before the hit so the word lands in time"
+        },
+        {
+          "name": "Below 86 %: stack and jump starts",
+          "on": "hp",
+          "below": 86,
+          "setPhase": 2,
+          "note": "Above 86 % attack 1802730 never leads to stack and jump (0 of 38)"
+        },
+        {
+          "name": "Stack and jump in 7.5 s",
+          "on": "cast",
+          "skill": [1802730],
+          "phase": 2,
+          "sound": "none",
+          "bar": {
+            "text": { "en": "Stack + jump", "de": "Sammeln + Springen" },
+            "in": 7.5,
+            "warn": 5,
+            "warnSay": { "en": "Stack in 5", "de": "Sammeln in 5" }
+          },
+          "cooldown": 5,
+          "verified": true,
+          "note": "Raid 2026-11-08: below 86 % stack and jump 1802820 follows attack 1802730 after 7.5 s (±0.1) in 51 of 60 casts. First stack and jump came 40–57 s after the pull, so a pull timer would be off by up to 15 s"
+        },
+        {
+          "name": "Bomb on me",
+          "on": "buff",
+          "buff": [12000064],
+          "target": "me",
+          "say": { "en": "Bomb on you", "de": "Bombe auf dir" },
+          "show": { "en": "BOMB ON YOU", "de": "BOMBE AUF DIR" },
+          "sound": "alarm",
+          "showSeconds": 6,
+          "cooldown": 5,
+
+          "bar": {
+            "text": { "en": "Bomb explodes", "de": "Bombe explodiert" },
+            "in": 5.9,
+            "warn": 3,
+            "warnSay": { "en": "Bomb in 3", "de": "Bombe in 3" }
+          }
+        },
+        {
+          "name": "Bomb on someone else",
+          "on": "buff",
+          "buff": [12000064],
+          "target": "notme",
+          "say": { "en": "Bomb on {target}", "de": "Bombe auf {target}" },
+          "show": { "en": "BOMB ON {target}", "de": "BOMBE AUF {target}" },
+          "sound": "alarm",
+          "showSeconds": 6,
+          "cooldown": 5,
+
+          "bar": {
+            "text": { "en": "Bomb explodes", "de": "Bombe explodiert" },
+            "in": 5.9,
+            "warn": 3,
+            "warnSay": { "en": "Bomb in 3", "de": "Bombe in 3" }
+          }
+        },
+        {
+          "name": "Wheel of Torment soon (~62 %)",
+          "on": "hp",
+          "below": 66,
+          "say": { "en": "Wheel soon", "de": "Gleich Fessel" },
+          "show": { "en": "WHEEL OF TORMENT SOON", "de": "GLEICH FESSEL DER QUALEN" },
+          "sound": "info",
           "verified": false,
           "note": "Guild plan: damage share at 6 o'clock, then run together and drop the AoE rain downwards"
         },
@@ -50,8 +143,8 @@
           "show": { "en": "STACK – THEN RAIN DOWNWARDS", "de": "SAMMELN – DANN REGEN NACH UNTEN" },
           "sound": "alarm",
           "cooldown": 10,
-          "verified": false,
-          "note": "Skill 1802900 'Wheel of Torment' / 'Fessel der Qualen' in the game data"
+          "verified": true,
+          "note": "Skill 1802900 'Wheel of Torment' / 'Fessel der Qualen'; raid 2026-11-08: cast at 61–63 % in 5 pulls (not ~75 % as in the guide)"
         },
         {
           "name": "Quadrants soon (~50 %)",
@@ -106,31 +199,16 @@
           "showSeconds": 6
         },
         {
-          "name": "Spirit Hunt soon (~75 %)",
-          "on": "hp",
-          "below": 78,
-          "say": {
-            "en": "Spirit hunt soon. Start at six o'clock, kill the spirits along the outer edge",
-            "de": "Gleich Geisterjagd. Start bei sechs Uhr, Geister am Außenrand töten"
-          },
-          "show": { "en": "SPIRIT HUNT – start at 6 o'clock", "de": "GEISTERJAGD – Start 6 Uhr" },
-          "sound": "alarm",
-          "verified": false,
-          "note": "Guild plan: two players run left (clockwise) and right (counter-clockwise) from 6 to 12, regroup in the centre before the timer ends"
-        },
-        {
-          "name": "Spirit Hunt and eyes soon (~50 %)",
-          "on": "hp",
-          "below": 53,
-          "say": {
-            "en": "Spirit hunt again soon. From now on eyes: red look at it, blue look away",
-            "de": "Gleich wieder Geisterjagd. Ab jetzt Augen: rot anschauen, blau wegschauen"
-          },
-          "show": { "en": "SPIRIT HUNT · EYES: RED LOOK – BLUE AWAY", "de": "GEISTERJAGD · AUGEN: ROT HIN – BLAU WEG" },
-          "color": "#FF7070",
-          "sound": "alarm",
-          "verified": false,
-          "note": "Guild plan: three eye checks one by one, then a donut / safe-zone follow-up"
+          "name": "To the middle (1801980)",
+          "on": "cast",
+          "skill": [1801980],
+          "say": { "en": "Middle", "de": "In die Mitte" },
+          "show": { "en": "TO THE MIDDLE", "de": "IN DIE MITTE" },
+          "sound": "info",
+          "showSeconds": 4,
+          "cooldown": 10,
+          "verified": true,
+          "note": "Players 2026-11-08: NOT the orbs - comes when the phase with the converging areas ends and everyone has to go to the middle. 1801980 at ~84 % and 55–59 %; evil spirits 2920674/2920675 appear 6.4 s later (meaning unclear); 1801880 +1.4 s, 1801887 +6.0 s, 1801902 +12 s; Ketu's HP stays put meanwhile. Check with screenshots"
         },
         {
           "name": "Eyes",
@@ -145,29 +223,34 @@
           "note": "Skill 1801962 'Abyssal Gaze' / 'Abgrundblick' in the game data; whether it is the eye check is a guess"
         },
         {
-          "name": "Power Eruption soon (~25 %)",
-          "on": "hp",
-          "below": 28,
-          "say": {
-            "en": "Power eruption soon. Stack at seven o'clock, move clockwise, everyone to their own soul stone",
-            "de": "Gleich Krafteruption. Bei sieben Uhr sammeln, im Uhrzeigersinn, jeder an seinen eigenen Seelenstein"
-          },
-          "show": { "en": "POWER ERUPTION – 7 o'clock, own soul stone", "de": "KRAFTERUPTION – 7 Uhr, eigener Seelenstein" },
+          "name": "Power Eruption in 10 s",
+          "on": "cast",
+          "skill": [1801981],
+          "say": { "en": "Power eruption in 10. Go to your soul stone", "de": "Krafteruption in 10. Zum eigenen Seelenstein" },
+          "show": { "en": "POWER ERUPTION – own soul stone", "de": "KRAFTERUPTION – eigener Seelenstein" },
+          "color": "#FF5050",
           "sound": "alarm",
-          "verified": false,
-          "note": "Guild plan: split close to the crystals so each player gets their own immunity; if dead, stay dead"
+          "showSeconds": 5,
+          "bar": {
+            "text": { "en": "Power Eruption", "de": "Krafteruption" },
+            "in": 10,
+            "warn": 5,
+            "warnSay": { "en": "Eruption in 5", "de": "Eruption in 5" }
+          },
+          "cooldown": 10,
+          "verified": true,
+          "note": "Raid 2026-11-08 (2 pulls): 1801981 once at 28 % and 34.7 % (with buff 568 on the boss), +3.4 s buff 18019701 (10 s), then 1801972 every second; Eruption of Power 1801970 at +12.4 s, the other pull wiped completely at +10.5 s. Action text from the guild plan (own soul stone), unverified"
         },
         {
           "name": "Power Eruption",
           "on": "cast",
           "skill": [1801970],
-          "say": { "en": "Soul stone now", "de": "Jetzt Seelenstein" },
-          "show": { "en": "SOUL STONE NOW", "de": "JETZT SEELENSTEIN" },
+          "show": { "en": "POWER ERUPTION", "de": "KRAFTERUPTION" },
           "color": "#FF5050",
-          "sound": "alarm",
+          "sound": "none",
           "cooldown": 10,
-          "verified": false,
-          "note": "Skill 1801970 'Eruption of Power' / 'Krafteruption' in the game data"
+          "verified": true,
+          "note": "Skill 1801970 'Eruption of Power' / 'Krafteruption'; comes 12.4 s after 1801981, deaths start at the cast, so no speech here any more"
         }
       ]
     },
@@ -176,6 +259,9 @@
       "name": "Eternal Ludra",
       "npc": [2301014, 2090719, 2300290],
       "resetAfter": 60,
+      // Raid 2026-11-12, 7 pulls incl. the kill. Phase 1 (100 → ~57 %) is a fixed time rotation (±0.3 s), the gaps below
+      // are the same in every pull. "Jump" is spoken by the bar running out (endSay): two triggers that predict the same
+      // stomp start a bar with the same text, the second replaces the first, so it is spoken only once.
       "triggers": [
         {
           "name": "Pull",
@@ -186,105 +272,345 @@
           },
           "show": { "en": "LUDRA – red orb: block / invincible", "de": "LUDRA – Rote Kugel: Block/Unverwundbar" },
           "sound": "info",
-          "showSeconds": 6
+          "showSeconds": 6,
+          "note": "Text from the guild plan, not checked yet"
+        },
+
+        // ---------------------------------------------------------------- phase 1: fixed rotation
+        {
+          "name": "Stomp with two waves",
+          "on": "cast",
+          "skill": [1803140],
+          "show": { "en": "STOMP – JUMP", "de": "STAMPFER – SPRINGEN" },
+          "sound": "none",
+          "showSeconds": 3,
+          "bar": { "text": { "en": "Jump", "de": "Springen" }, "in": 2.6, "warn": 0, "endSay": { "en": "Jump", "de": "Springen" } },
+          "cooldown": 5,
+          "note": "Players: 1803150 is a stomp with two waves, jump; the second wave needs no callout of its own. 1803140 (tank debuff 12000151) comes 1.8 s before 1803150 (10/10); hits 1803150 +3.1 s and helper 1803155 +3.3 s after 1803140"
         },
         {
-          "name": "Bingo 1 soon (~50 %)",
-          "on": "hp",
-          "below": 53,
-          "say": { "en": "Bingo soon. Walk your route, watch the diagonal breath", "de": "Gleich Bingo. Eigene Route laufen, auf den diagonalen Atem achten" },
+          "name": "Bingo 1 starts (second 1803225)",
+          "on": "cast",
+          "skill": [1803225],
+          "phase": 2,
+          "say": { "en": "Bingo", "de": "Bingo" },
           "show": { "en": "BINGO – walk your route", "de": "BINGO – eigene Route laufen" },
           "color": "#FFB000",
           "sound": "alarm",
-          "verified": false,
-          "note": "Guild plan: 6×6 board, 10 routes without overlapping tiles, stop when the safe tile is found; after the first bingo come three line safe-zones in a row"
+          "showSeconds": 5,
+          "bar": {
+            "text": { "en": "Bingo check", "de": "Bingo-Check" },
+            "in": 25.9,
+            "warn": 5,
+            "warnSay": { "en": "Bingo check in 5", "de": "Bingo-Check in 5" }
+          },
+          "cooldown": 5,
+          "note": "The second 1803225 of the fight comes exactly 5.6 s before Purple Bolt 1803010 in 7 of 7 pulls (also in the pull where bingo started at 44 %); check 1803440 kills 20.3 s after Purple Bolt. Must stay ABOVE the phase-1 triggers for 1803225"
         },
         {
-          "name": "Red/blue tethers soon (~33 %)",
-          "on": "hp",
-          "below": 36,
-          "say": { "en": "Tethers soon. Facing Ludra: blue left, red right", "de": "Gleich Verbindungen. Mit Blick auf Ludra: blau links, rot rechts" },
-          "show": { "en": "TETHERS – BLUE LEFT · RED RIGHT", "de": "VERBINDUNGEN – BLAU LINKS · ROT RECHTS" },
+          "name": "Ludra jumps up (first 1803225)",
+          "on": "cast",
+          "skill": [1803225],
+          "phase": 1,
+          "show": { "en": "LUDRA JUMPS – landing, then spikes", "de": "LUDRA SPRINGT – Landung, dann Stacheln" },
+          "sound": "none",
+          "showSeconds": 4,
+          "bar": { "text": { "en": "Landing", "de": "Landung" }, "in": 4.3, "warn": 0 },
+          "cooldown": 5,
+          "note": "Players: the boss jumps up and lands, spikes follow (the spikes have no skill code). Landing hit 1803225 +4.3 s. First cast at ~25 s (85–88 %)"
+        },
+        {
+          "name": "Count the first 1803225",
+          "on": "cast",
+          "skill": [1803225],
+          "phase": 1,
+          "delay": 1.5,
+          "setPhase": 2,
+          "sound": "none",
+          "cooldown": 5,
+          "note": "Delayed so that the further packets of the same cast do not already count as the second one"
+        },
+        {
+          "name": "Purple Bolt (bingo 1 running)",
+          "on": "cast",
+          "skill": [1803010],
+          "sound": "none",
+          "bar": {
+            "text": { "en": "Bingo check", "de": "Bingo-Check" },
+            "in": 20.3,
+            "warn": 5,
+            "warnSay": { "en": "Bingo check in 5", "de": "Bingo-Check in 5" }
+          },
+          "cooldown": 5,
+          "note": "Syncs the bingo bar; the check 1803440 came 20.3–20.4 s later in 7 of 7 pulls"
+        },
+        {
+          "name": "Ludra changes side (bingo)",
+          "on": "cast",
+          "skill": [1803224],
+          "show": { "en": "LUDRA CHANGES SIDE", "de": "LUDRA WECHSELT DIE SEITE" },
+          "sound": "none",
+          "showSeconds": 3,
+          "note": "Players: during bingo he jumps to another side"
+        },
+        {
+          "name": "Orb summon",
+          "on": "cast",
+          "skill": [1803200],
+          "show": { "en": "ORBS", "de": "ORBS" },
+          "sound": "none",
+          "showSeconds": 3,
+          "note": "Players: orb summon. Comes 6.2 s after the first 1803225"
+        },
+        {
+          "name": "Stomp + spikes in 18 s",
+          "on": "cast",
+          "skill": [1803240],
+          "sound": "none",
+          "bar": {
+            "text": { "en": "Stomp + spikes", "de": "Stampfer + Stacheln" },
+            "in": 18.9,
+            "warn": 5,
+            "warnSay": { "en": "Stomp in 5, dodge or block", "de": "Stampfer in 5, ausweichen oder blocken" }
+          },
+          "cooldown": 5,
+          "note": "1803250 follows 1803240 after 17.9 s (8/8), its hit 1.0 s later"
+        },
+        {
+          "name": "Stomp + spikes",
+          "on": "cast",
+          "skill": [1803250],
+          "show": { "en": "STOMP + SPIKES – DODGE / BLOCK", "de": "STAMPFER + STACHELN – AUSWEICHEN / BLOCKEN" },
+          "sound": "none",
+          "showSeconds": 3,
+          "bar": {
+            "text": { "en": "Out of the middle", "de": "Raus aus der Mitte" },
+            "in": 17.7,
+            "warn": 5,
+            "warnSay": { "en": "Out of the middle in 5", "de": "Mitte raus in 5" }
+          },
+          "cooldown": 5,
+          "note": "Players: stomp with spikes, dodge or block. Kills in 4 of 8 casts. 1803230 follows after 14.9 s (8/8), its hit 2.8 s later"
+        },
+        {
+          "name": "Red AoE in the middle",
+          "on": "cast",
+          "skill": [1803230],
+          "say": { "en": "Out of the middle", "de": "Raus aus der Mitte" },
+          "show": { "en": "OUT OF THE MIDDLE", "de": "RAUS AUS DER MITTE" },
+          "sound": "alarm",
+          "showSeconds": 3,
+          "cooldown": 5,
+          "note": "Players: red AoE in the middle, everyone out. Hit 2.8 s, helpers 1803235 3.0 s after the cast"
+        },
+        {
+          "name": "Tornadoes (1803210)",
+          "on": "cast",
+          "skill": [1803210],
+          "show": { "en": "TORNADOES", "de": "TORNADOS" },
+          "sound": "none",
+          "showSeconds": 3,
+          "bar": { "text": { "en": "Cone on the marked player", "de": "Kegel auf Markiertem" }, "in": 6.4, "warn": 0 },
+          "cooldown": 5,
+          "note": "Players: 1803210 tornadoes, 1803120 = 45° cone on the marked player. 1803120 follows 1803210 after 5.9 s (16/16), hit 0.5 s later"
+        },
+        {
+          "name": "Tornadoes spawn, then cross AoE",
+          "on": "cast",
+          "skill": [1803170, 1803450],
+          "show": { "en": "TORNADOES – then cross AoE", "de": "TORNADOS – danach Kreuz-AoE" },
+          "sound": "none",
+          "showSeconds": 4,
+          "bar": {
+            "text": { "en": "Cross AoE", "de": "Kreuz-AoE" },
+            "in": 8.0,
+            "warn": 3,
+            "warnSay": { "en": "Cross in 3", "de": "Kreuz in 3" }
+          },
+          "cooldown": 5,
+          "note": "Players: 1803170 + 1803450 spawn tornadoes, 1803160 = cross AoEs. 1803160 follows 1803170 after 5.4 s (7/7); deaths 2.6–2.7 s after 1803160"
+        },
+        {
+          "name": "Unimportant / no callout",
+          "on": "cast",
+          "skill": [1803220, 1803000, 1803030],
+          "sound": "none",
+          "note": "1803220 unimportant (players); 1803000 and the same-named 1803005/06 'Supply Eldritch Energy' and 1803030 (colour circles explode) are only covered so learning mode does not read them out"
+        },
+
+        // ---------------------------------------------------------------- from ~50 %: half fixed rotation
+        {
+          "name": "Orbs, then jump",
+          "on": "cast",
+          "skill": [1803360],
+          "say": { "en": "Orbs", "de": "Orbs" },
+          "show": { "en": "ORBS – then jump", "de": "ORBS – dann springen" },
+          "sound": "info",
+          "showSeconds": 4,
+          "bar": { "text": { "en": "Jump", "de": "Springen" }, "in": 5.6, "warn": 0, "endSay": { "en": "Jump", "de": "Springen" } },
+          "cooldown": 5,
+          "note": "Players: 1803360 orbs spawn, 1803310 stomp at the edge = jump. 1803310 follows 1803360 after 5.5 s (21/21); hits +0.4 (boss) and +0.8 s (helper 1803315)"
+        },
+        {
+          "name": "Second jump after orbs",
+          "on": "cast",
+          "skill": [1803360],
+          "delay": 6.0,
+          "sound": "none",
+          "bar": { "text": { "en": "Jump", "de": "Springen" }, "in": 9.7, "warn": 0, "endSay": { "en": "Jump", "de": "Springen" } },
+          "cooldown": 5,
+          "note": "A second 1803310 follows 1803360 after 15.6 s in 19 of 21 casts. Delayed so its bar does not replace the first jump bar"
+        },
+        {
+          "name": "Direction change south, then jump",
+          "on": "cast",
+          "skill": [1803272],
+          "show": { "en": "LUDRA TO THE SOUTH – jump soon", "de": "LUDRA NACH SÜDEN – gleich springen" },
+          "sound": "none",
+          "showSeconds": 3,
+          "bar": { "text": { "en": "Jump", "de": "Springen" }, "in": 4.8, "warn": 0, "endSay": { "en": "Jump", "de": "Springen" } },
+          "cooldown": 5,
+          "note": "Players: 1803272 = he changes direction and appears in the south. 1803310 follows after 4.7 s (6/6)"
+        },
+        {
+          "name": "Direction change north, then jump",
+          "on": "cast",
+          "skill": [1803273],
+          "show": { "en": "LUDRA TO THE NORTH – jump soon", "de": "LUDRA NACH NORDEN – gleich springen" },
+          "sound": "none",
+          "showSeconds": 3,
+          "bar": { "text": { "en": "Jump", "de": "Springen" }, "in": 4.8, "warn": 0, "endSay": { "en": "Jump", "de": "Springen" } },
+          "cooldown": 5,
+          "note": "Players: 1803273 = he changes direction and appears in the north. 1803310 follows after 4.7 s (6/7)"
+        },
+        {
+          "name": "Stomp at the edge",
+          "on": "cast",
+          "skill": [1803310],
+          "show": { "en": "JUMP", "de": "SPRINGEN" },
+          "sound": "none",
+          "showSeconds": 1.5,
+          "note": "Only shown: the wave hits 0.8 s after the cast, too late to speak. About 70 % of the 1803310 are predicted by the jump bars above"
+        },
+        {
+          "name": "Spikes",
+          "on": "cast",
+          "skill": [1803260],
+          "show": { "en": "SPIKES", "de": "STACHELN" },
+          "sound": "none",
+          "showSeconds": 3,
+          "note": "Players: looks like spikes, right after a stomp (~3.3 s after 1803275 or 1803310)"
+        },
+        {
+          "name": "Laser left to right",
+          "on": "cast",
+          "skill": [1803280],
+          "say": { "en": "Laser left to right", "de": "Laser links nach rechts" },
+          "show": { "en": "LASER LEFT → RIGHT", "de": "LASER LINKS → RECHTS" },
+          "sound": "alarm",
+          "showSeconds": 4,
+          "cooldown": 5,
+          "note": "Players: laser beam from the boss, from left to right, everyone to one side. Helper 1803285 +0.7 s, hits +3.1–4.2 s"
+        },
+        {
+          "name": "Laser right to left",
+          "on": "cast",
+          "skill": [1803290],
+          "say": { "en": "Laser right to left", "de": "Laser rechts nach links" },
+          "show": { "en": "LASER RIGHT → LEFT", "de": "LASER RECHTS → LINKS" },
+          "sound": "alarm",
+          "showSeconds": 4,
+          "cooldown": 5,
+          "note": "Players: same laser from right to left. Helper 1803295 +0.7 s, hits +2.3–2.8 s"
+        },
+        {
+          "name": "Sickle",
+          "on": "cast",
+          "skill": [1803380],
+          "say": { "en": "Block", "de": "Blocken" },
+          "show": { "en": "SICKLE – BLOCK / I-FRAME", "de": "SICHEL – BLOCKEN / IFRAME" },
+          "sound": "alarm",
+          "showSeconds": 3,
+          "cooldown": 5,
+          "note": "Players: sickle, everyone blocks or i-frames. Helper 1803385 +0.7 s, deaths +1.6 s (15 deaths in 8 of 11 casts)"
+        },
+        {
+          "name": "Zikel",
+          "on": "cast",
+          "skill": [1803390],
+          "say": { "en": "Zikel, on the line", "de": "Zikel, auf die Linie" },
+          "show": { "en": "ZIKEL – ON THE LINE, DODGE THE LASERS", "de": "ZIKEL – AUF DIE LINIE, LASERN AUSWEICHEN" },
+          "sound": "alarm",
+          "showSeconds": 5,
+          "cooldown": 5,
+          "note": "Players: Zikel, everyone onto the line and dodge the lasers. Lasers are helper casts 1803395 (+1.7 s) and 1803396 (+4.3 s), alternating every ~4 s"
+        },
+        {
+          "name": "Fake Zikel",
+          "on": "cast",
+          "skill": [1803370],
+          "say": { "en": "Fake Zikel, dodge", "de": "Fake-Zikel, ausweichen" },
+          "show": { "en": "FAKE ZIKEL – DODGE / BLOCK", "de": "FAKE-ZIKEL – AUSWEICHEN / BLOCKEN" },
+          "sound": "alarm",
+          "showSeconds": 3,
+          "cooldown": 5,
+          "note": "Players: fake Zikel, dodge or block. Deaths 0.4–2.2 s after the cast (7 in 4 of 10)"
+        },
+        {
+          "name": "Tornadoes (1803350)",
+          "on": "cast",
+          "skill": [1803350],
+          "show": { "en": "TORNADOES", "de": "TORNADOS" },
+          "sound": "none",
+          "showSeconds": 3,
+          "note": "Players: tornadoes. Ticks are helper casts 1803185"
+        },
+        {
+          "name": "Red/blue split",
+          "on": "cast",
+          "skill": [1803400],
+          "say": { "en": "Red blue, split up", "de": "Rot Blau aufteilen" },
+          "show": { "en": "RED / BLUE – SPLIT UP", "de": "ROT / BLAU – AUFTEILEN" },
           "color": "#FF7070",
           "sound": "alarm",
-          "verified": false,
-          "note": "Guild plan ~33 %, another guide 35 %; each colour has a front and a back position, stay separated"
+          "showSeconds": 5,
+          "cooldown": 10,
+          "note": "Players: 1803400 + 1803401 + 1803402 split the group into red and blue. 1803401/02 start 2.2 s later and tick for 22–42 s. At 30–32 % and ~15 %"
         },
         {
-          "name": "Bingo 2 soon (~25 %)",
-          "on": "hp",
-          "below": 28,
-          "say": { "en": "Second bingo soon. Jump the shockwaves", "de": "Gleich zweites Bingo. Über die Schockwellen springen" },
-          "show": { "en": "BINGO 2 – jump the shockwaves", "de": "BINGO 2 – Schockwellen springen" },
+          "name": "Ludra's Trial = bingo 2",
+          "on": "cast",
+          "skill": [1803040],
+          "say": { "en": "Bingo two", "de": "Bingo zwei" },
+          "show": { "en": "LUDRA'S TRIAL – BINGO 2", "de": "LUDRAS PRÜFUNG – BINGO 2" },
           "color": "#FFB000",
           "sound": "alarm",
-          "verified": false,
-          "note": "Guides: second bingo at about 25 %"
-        },
-        {
-          "name": "Final colour circles soon (~10 %)",
-          "on": "hp",
-          "below": 12,
-          "say": {
-            "en": "Colour circles soon. Melee front, ranged back, enter on the last second",
-            "de": "Gleich Farbkreise. Nahkampf vorne, Fernkampf hinten, erst in der letzten Sekunde rein"
+          "showSeconds": 5,
+          "bar": {
+            "text": { "en": "Bingo check", "de": "Bingo-Check" },
+            "in": 23.4,
+            "warn": 5,
+            "warnSay": { "en": "Bingo check in 5", "de": "Bingo-Check in 5" }
           },
-          "show": { "en": "COLOUR CIRCLES – enter on the last second", "de": "FARBKREISE – erst in der letzten Sekunde" },
-          "color": "#FFB000",
-          "sound": "alarm",
-          "verified": false,
-          "note": "Guild plan: take a circle matching your assigned colour"
+          "cooldown": 8,
+          "note": "1803040 at 22–24 %; the check 1803440 kills 23.4 s later"
         },
         {
           "name": "Colour circles",
           "on": "cast",
-          "skill": [1803030],
-          "say": { "en": "Own colour, enter on the last second", "de": "Eigene Farbe, erst in der letzten Sekunde rein" },
-          "show": { "en": "OWN COLOUR – ENTER LATE", "de": "EIGENE FARBE – SPÄT REIN" },
+          "skill": [1803410],
+          "say": { "en": "Colour circles, own colour", "de": "Farbkreise, eigene Farbe" },
+          "show": { "en": "COLOUR CIRCLES – own colour", "de": "FARBKREISE – eigene Farbe" },
           "sound": "alarm",
+          "showSeconds": 5,
+          "bar": {
+            "text": { "en": "Explosion", "de": "Explosion" },
+            "in": 8.0,
+            "warn": 3,
+            "warnSay": { "en": "Explosion in 3", "de": "Explosion in 3" }
+          },
           "cooldown": 8,
-          "verified": false,
-          "note": "Skill 1803030 'Ure's Area' / 'Donnerzone' in the game data; guides: colour circles / 'Thunder Zone'"
-        },
-        {
-          "name": "Ludra's Trial",
-          "on": "cast",
-          "skill": [1803040],
-          "say": { "en": "Ludra's Trial", "de": "Ludras Prüfung" },
-          "show": { "en": "LUDRA'S TRIAL", "de": "LUDRAS PRÜFUNG" },
-          "sound": "alarm",
-          "cooldown": 8,
-          "verified": false,
-          "note": "Skill 1803040 in the game data, mechanic unknown (bingo?)"
-        },
-        {
-          "name": "Purple Bolt",
-          "on": "cast",
-          "skill": [1803010],
-          "say": { "en": "Purple bolt", "de": "Purpurner Donnerschlag" },
-          "sound": "info",
-          "verified": false,
-          "note": "Skill 1803010 in the game data"
-        },
-        {
-          "name": "Condensed Forcefield",
-          "on": "cast",
-          "skill": [1803020],
-          "say": { "en": "Forcefield", "de": "Kraftfeld" },
-          "show": { "en": "CONDENSED FORCEFIELD", "de": "KONDENSIERTES KRAFTFELD" },
-          "sound": "info",
-          "verified": false,
-          "note": "Skill 1803020 in the game data"
-        },
-        {
-          "name": "Supply Eldritch Energy",
-          "on": "cast",
-          "skill": [1803000],
-          "say": { "en": "Eldritch energy", "de": "Abgrundenergie" },
-          "show": { "en": "SUPPLY ELDRITCH ENERGY", "de": "ABGRUNDENERGIE-ZUFUHR" },
-          "sound": "info",
-          "verified": false,
-          "note": "Skill 1803000 in the game data, maybe the reactor"
+          "note": "1803410 at 5–10 % (red and blue circles), explosion 1803030 exactly 8.0 s later. 'Own colour' from the guild plan, not checked"
         }
       ]
     }

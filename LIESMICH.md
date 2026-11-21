@@ -7,8 +7,8 @@ und als Text über dem Spiel. Dazu zeigt er Boss-HP und Kampfdauer an.
 
 - **In jedem Dungeon** liest er die Fähigkeiten des Bosses mit ihrem Spielnamen vor, z. B. „Drana-Welle“ oder
   „Orbwurf“, sobald der Boss sie einsetzt. Jede Fähigkeit höchstens alle 20 Sekunden.
-- **Für Bosse mit eigener Boss-Mod** (zuerst: Raid **Ludra**) kommen eigene Ansagen wie „Bingo, sicheres Feld
-  suchen“, Phasen nach HP und Countdown-Balken („… in 5“).
+- **Für Bosse mit eigener Boss-Mod** (zuerst: Raid **Ludra**) kommen eigene Ansagen wie „Springen“, „Raus aus der
+  Mitte“ oder „Bingo-Check in 5“, zeitlich aus echten Raids gemessen, dazu Countdown-Balken.
 - **Englisch oder Deutsch:** Standard ist Englisch. Umstellen per Rechtsklick auf das Symbol → **Language / Sprache →
   Deutsch**. Dann sind Ansagen, Fähigkeits- und Bossnamen, Menü und Overlay deutsch, und eine deutsche Stimme wird
   gewählt.
@@ -74,16 +74,16 @@ Sprachansagen funktionieren trotzdem.
 
 - In Dungeons ohne Mod: der Name jeder Boss-Fähigkeit in der gewählten Sprache, sobald der Boss sie beginnt. Normale Angriffe werden nicht
   angesagt. Oben im Overlay stehen Boss-Name, HP und Kampfzeit.
-- Mit Mod (Ludra): ein Hinweis beim Pull, Phasen nach Boss-HP (z. B. Bingo bei etwa 50 % und 25 %), eigene Texte zu
-  bekannten Fähigkeiten und Countdown-Balken für Fähigkeiten, die regelmäßig kommen
+- Mit Mod (Ludra): ein Hinweis beim Pull, eigene Texte zu bekannten Fähigkeiten und Vorwarnungen mit
+  Countdown-Balken, wenn sich eine Attacke vorher ankündigt (z. B. „Springen“ nach den Orbs, „Bingo-Check in 5“)
 - „Boss besiegt“ am Ende
 
 Wichtig: Zwischen dem Beginn einer Fähigkeit und dem Treffer liegen oft nur 0,5–2 Sekunden. Die Ansage hilft vor
 allem bei Fähigkeiten mit längerer Ausholzeit und als Erinnerung, was gerade passiert. Was man bei einer Fähigkeit
 tun muss, sagt er erst, wenn es für den Boss eine Mod gibt.
 
-Die erste Ludra-Version stammt aus Guides und den Spieldaten. Nach den ersten Raidabenden wird sie anhand echter
-Mitschnitte verbessert. Neue Versionen installieren sich automatisch.
+Die Ludra-Ansagen stammen seit 0.7.0 aus unseren eigenen Mitschnitten des überarbeiteten Raids (Kill am 12.11.26).
+Rahu und Ketu beruhen zum Teil noch auf Guides. Neue Versionen installieren sich automatisch.
 
 ## Beim Bau der Countdown-Timer helfen
 

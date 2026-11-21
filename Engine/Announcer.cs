@@ -7,6 +7,8 @@ public interface IAnnouncerOutput
 {
     void Say(string text, bool urgent);
     void Sound(string kind);
+    /// <summary>An overlay message appeared (only for logging; the overlay itself reads the snapshot).</summary>
+    void Show(string text, string color) { }
 }
 
 public sealed class NullOutput : IAnnouncerOutput
@@ -619,6 +621,7 @@ public sealed class Announcer
     {
         _alerts.Add((text, color, time, seconds));
         if (_alerts.Count > 3) _alerts.RemoveAt(0);
+        _out.Show(text, color);
     }
 
     private void Record(Fight f, long time, string type, uint code, string? name, string? detail, uint actor = 0,
